@@ -208,6 +208,7 @@ Formats in Amiga type (ext.name):
 2. For all TFMX series formats, we only support ```mdat.+smpl.``` name format
 3. Some Hippel ST COSO (.soc) files can be accept and play but output strange noise. Those files actually are rejected by replayer due to the calculation size is not equal to real file size. You can try to insert 2-40 null bytes from the end of the file to let them be equal.
 4. I deliberately rejected many formats that can be decoded by [foo_openmpt54](https://www.foobar2000.org/components/view/foo_openmpt54) since UADE is more like a black box and it's hard to get extra information from it.
+5. For Quartet ST, you can choose ```.qts+.smp``` or ```.qts/.4v+SMP.set``` or ```.4v+.set``` format
 
 ## Compatibility
 - foobar2000 **v2.0 or newer**, Windows, 32-bit and 64-bit.
@@ -239,7 +240,7 @@ WTL **MUST** be placed as below:
 ```
 
 ### Build steps
-1. Open `Adlib_Decoder.sln`.
+1. Open `win_ade\win_ade.sln`.
 2. Add all .vcxproj in foobar2000SDK (except `foo_sample`) to the solution. Then add all these as references to `foo_input_uade`.
 3. Build **Win32** and **x64** (both are required to package).
 4. The x64 post-build step runs `fb2k_component_pack(_dbg).ps1`, producing `dist\foo_input_uade(_dbg).fb2k-component`
