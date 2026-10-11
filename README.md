@@ -1,8 +1,10 @@
 A foobar2000 component decodes enumerous Amiga exotic formats.
+
 Based on [UADE](https://gitlab.com/uade-music-player/uade), customized a lot.
 
 # Support formats
 To avoid False Positive as much as possible, this component only receives below formats in specific type:
+
 Formats in Windows type (name.ext):
 
 | Extension(s) | Format |
