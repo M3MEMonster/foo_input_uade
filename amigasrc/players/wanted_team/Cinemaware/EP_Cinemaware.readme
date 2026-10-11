@@ -1,0 +1,47 @@
+Short:    EaglePlayer 'Cinemaware' external replayer
+Author:   Wanted Team
+Uploader: Don Adan <DonAdan@wp.pl>
+Version:  1
+Type:     mus/play
+
+This is a new external 'Cinemaware' replay for EaglePlayer 1.54/2.00+.
+
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- Volume
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- Balance
+- SongEnd
+- ModuleInfo with Position Counter
+- special Amplifier version (EP 2.00+ only)
+
+
+Notes:
+
+1. This soundformat (another MIDI clone) appears to have only been used
+   in the last Cinemaware Amiga game 'Wings'.
+
+2. All the relevant sample data must be stored as separate files within
+   a subdirectory named 'Instruments'.
+
+3. If you have, or know of, unsupported 'Cinemaware' modules please
+   contact the Wanted Team.
+
+4. You can choose your preferred player version for use with EP 2.00+.
+
+   The sound output of the Amplifier version in the Fast RAM Amplifier mode
+   is sometimes very poor. I'm not sure why but perhaps it is another EP2
+   bug. Sources for both player versions are available on the WT page.
+
+5. You can get the latest versions of Wanted Team products from:
+
+   http://amiga.emucamp.com/wt/wt.html
+
+Special greetings go to
+
+- Ronald van Dijk for support

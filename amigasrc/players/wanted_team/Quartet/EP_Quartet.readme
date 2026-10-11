@@ -1,0 +1,44 @@
+Short:        EaglePlayer "Quartet" external replayer
+Author:       Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      1
+Type:         mus/play
+Architecture: m68k-amigaos
+
+This is a different version of the external "Quartet" replay for
+EaglePlayer 1.54/2.00+. It's a player for all known "Quartet" modules.
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- Balance
+- ModuleInfo with Position Counter
+- Volume
+- SongEnd
+- Duration (+/- 1sec)
+- special Amplifier version (EP 2.00+ only)
+
+Notes:
+
+1. This player plays songs created with the Amiga version of the "Quartet"
+   editor from Microdeal.
+
+2. Default file prefixes for:
+
+   Songdata - QPA. (for example: QPA.Locomotion)
+   Samples  - SMP. (for example: SMP.Locomotion)
+
+   You can use also "SMP.set" for the sample file name.
+
+3. All the samples files must be joined together into one file, in the 
+   correct order, if they are separated (like in some Byte Back games).
+
+4. You can choose your preferred player version for use with EP 2.00+.
+
+5. You can get the latest versions of Wanted Team products from:
+
+   http://amiga.emucamp.com/wt/wt.html

@@ -1,0 +1,39 @@
+Short:        EaglePlayer "Kim Christensen" external replayer
+Author:       Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      1
+Type:         mus/play
+Architecture: m68k-amigaos
+
+This is a new external "Kim Christensen" replay for EaglePlayer 1.54/2.00+.
+It's a player for all known "Kim Christensen" modules.
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- PatternJump
+- Balance
+- ModuleInfo with Position Counter
+- Volume
+- SongEnd
+- Save
+- Duration (+/- 1sec)
+- special Amplifier version (EP 2.00+ only)
+
+Notes:
+
+1. This soundformat was only (?) used in "Rotor" game.
+
+2. You can choose your preferred player version for use with EP 2.00+.
+
+   The sound output of the Amplifier version in the Fast RAM Amplifier mode
+   is sometimes very poor. I'm not sure why but perhaps it is another EP2
+   bug. Sources for both player versions are available on the WT page.
+
+3. You can get the latest versions of Wanted Team products from:
+
+   http://wt.exotica.org.uk

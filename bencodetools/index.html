@@ -1,0 +1,168 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>bencode-tools</title>
+</head>
+
+<body>
+<h1>bencode-tools</h1>
+
+'bencode-tools' is a collection of C and Python tools for manipulating
+bencoded data. This was formerly named 'type validator'.
+
+<p>
+The collection consists of a C library for reading and writing
+bencoded data, and a Python implementation of bencode included with
+'typevalidator' that can be used to verify typing and contents of
+bencoded messages.
+
+<h1>libbencodetools</h1>
+
+'libbencodetools' is a straightforward C implementation of bencode protocol.
+It can simply be used by including
+<pre>
+#include &lt;bencodetools/bencode.h&gt;
+</pre>
+into your C module and linking the program with '-lbencodetools'.
+
+<h2>Download bencode-tools</h2>
+Download latest version of type validator
+<a href="bencode-tools-2011-03-15.tar.bz2">here</a>
+or get it from the Git repository: <a href="https://gitlab.com/heikkiorsila/bencodetools">git clone https://gitlab.com/heikkiorsila/bencodetools.git</a>
+
+<p>
+List of releases:
+<ul>
+<li> <a href="bencode-tools-2011-03-15.tar.bz2">bencode-tools-2011-03-15.tar.bz2</a> (<font color="red">newest</font>)
+</ul>
+
+<h1>Type validator (The Python part of bencode-tools)</h1>
+
+<ul>
+<li>Type validator is a Python module for validating Python objects from
+  an untrusted source
+<li> It was developed for a P2P application that sends and receives
+<a href="http://en.wikipedia.org/wiki/Bencode">bencoded</a>
+messages from network. Message format and type information was validated
+by using the type validator.
+<li> The reference implementation is in public domain (you may do whatever
+you want with the code)
+</ul>
+
+<h2>Motivational background</h2>
+<ul>
+<li> Minimize risks and cleanup code for validating network messages
+<li> Pythonish approach for network serialization
+<li> Supports binary data as strings (Python 2.x strings are binary safe)
+<li> Note: XML schemas are bloated and they do not provide sufficient type
+  information
+</ul>
+
+<h2>How it works</h2>
+<ul>
+<li> Read data from network, unserialize data to Python objects with
+ bencode, and finally, validate the objects with type validator.
+  Data comes as recursive structures
+  of Python primitives consisting from integers, strings, booleans,
+  dictionaries and lists.
+<li> Use Python's iterators and type system for a compact implementation
+     (the code is just 80 lines with comments)
+<li> Message format is specified using Python syntax to make type
+     validator intuitive to use
+<li> It is possible to validate values by specifying a function callback
+     to test a value
+<li> Bencode was extended with bool type for Python type completeness
+</ul>
+
+<h2>Examples</h2>
+
+<!-- Generator: GNU source-highlight 3.1
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><i><font color="#9A1900"># type validator documentation as a commented source code :-)</font></i>
+
+<b><font color="#000080">from</font></b> bencode<font color="#990000">.</font>py <b><font color="#000080">import</font></b> fmt_bdecode
+<b><font color="#000080">from</font></b> typevalidator <b><font color="#000080">import</font></b> validate<font color="#990000">,</font> ANY<font color="#990000">,</font> ZERO_OR_MORE<font color="#990000">,</font> ONE_OR_MORE<font color="#990000">,</font> OPTIONAL_KEY
+
+<i><font color="#9A1900"># Syntax of validate: validate(specification, object)</font></i>
+<i><font color="#9A1900"># Syntax of fmt_bdecode: fmt_bdecode(specification, blob)</font></i>
+<i><font color="#9A1900">#</font></i>
+<i><font color="#9A1900"># Blob is first transformed to an object with bdecode, then validated with</font></i>
+<i><font color="#9A1900"># type validator. This can be done with one call with fmt_bdecode()</font></i>
+
+<i><font color="#9A1900"># Asserted examples with type validator:</font></i>
+
+<i><font color="#9A1900"># Demand a dictionary whose keys and values are strings:</font></i>
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">({</font>str<font color="#990000">:</font> str<font color="#990000">},</font> <font color="#990000">{</font><font color="#FF0000">'name'</font><font color="#990000">:</font> <font color="#FF0000">'Cheradenine'</font><font color="#990000">})</font>
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">({</font>str<font color="#990000">:</font> str<font color="#990000">},</font> <font color="#990000">{</font><font color="#993399">1</font><font color="#990000">:</font> <font color="#FF0000">'Cheradenine'</font><font color="#990000">})</font> <font color="#990000">==</font> False
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">({</font>str<font color="#990000">:</font> str<font color="#990000">},</font> <font color="#990000">{</font><font color="#FF0000">'name'</font><font color="#990000">:</font> <font color="#993399">1</font><font color="#990000">})</font> <font color="#990000">==</font> False
+
+<i><font color="#9A1900"># Demand a dictionary whose keys are integers but values may have any</font></i>
+<i><font color="#9A1900"># (supported) type. Furthermore, key with value 123 must exist.</font></i>
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">({</font>int<font color="#990000">:</font> ANY<font color="#990000">,</font> <font color="#993399">123</font><font color="#990000">:</font> ANY<font color="#990000">},</font> <font color="#990000">{</font><font color="#993399">123</font><font color="#990000">:</font> <font color="#FF0000">'x'</font><font color="#990000">})</font>
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">({</font>int<font color="#990000">:</font> ANY<font color="#990000">,</font> <font color="#993399">123</font><font color="#990000">:</font> ANY<font color="#990000">},</font> <font color="#990000">{</font><font color="#993399">123</font><font color="#990000">:</font> <font color="#993399">456</font><font color="#990000">})</font>
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">({</font>int<font color="#990000">:</font> ANY<font color="#990000">,</font> <font color="#993399">123</font><font color="#990000">:</font> ANY<font color="#990000">},</font> <font color="#990000">{</font><font color="#993399">4</font><font color="#990000">:</font> <font color="#FF0000">'x'</font><font color="#990000">})</font> <font color="#990000">==</font> False <i><font color="#9A1900"># 123 does not exist</font></i>
+
+<i><font color="#9A1900"># List may begin with ZERO_OR_MORE or ONE_OR_MORE to specify that minimum</font></i>
+<i><font color="#9A1900"># length of the list is either zero or one, respectively. If either is</font></i>
+<i><font color="#9A1900"># used, then also a type must be specified after this.</font></i>
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">([</font>ZERO_OR_MORE<font color="#990000">,</font> ANY<font color="#990000">],</font> <font color="#990000">[])</font>
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">([</font>ONE_OR_MORE<font color="#990000">,</font> ANY<font color="#990000">],</font> <font color="#990000">[</font><font color="#FF0000">'x'</font><font color="#990000">])</font>
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">([</font>ONE_OR_MORE<font color="#990000">,</font> ANY<font color="#990000">],</font> <font color="#990000">[])</font> <font color="#990000">==</font> False
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">([</font>ONE_OR_MORE<font color="#990000">,</font> str<font color="#990000">],</font> <font color="#990000">[</font><font color="#FF0000">'x'</font><font color="#990000">,</font> <font color="#993399">1</font><font color="#990000">])</font> <font color="#990000">==</font> False
+
+<i><font color="#9A1900"># Recursive data structures are easy to specify! Define a list of</font></i>
+<i><font color="#9A1900"># dictionaries.</font></i>
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">([</font>ZERO_OR_MORE<font color="#990000">,</font> <font color="#990000">{</font><font color="#FF0000">'name'</font><font color="#990000">:</font> str<font color="#990000">}],</font> <font color="#990000">[{</font><font color="#FF0000">'name'</font><font color="#990000">:</font> <font color="#FF0000">'User1'</font><font color="#990000">},</font> <font color="#990000">{</font><font color="#FF0000">'name'</font><font color="#990000">:</font> <font color="#FF0000">'User2'</font><font color="#990000">}])</font>
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">([</font>ZERO_OR_MORE<font color="#990000">,</font> <font color="#990000">{</font><font color="#FF0000">'name'</font><font color="#990000">:</font> str<font color="#990000">}],</font> <font color="#990000">[</font><font color="#993399">1</font><font color="#990000">,</font> <font color="#990000">{</font><font color="#FF0000">'name'</font><font color="#990000">:</font> <font color="#FF0000">'User1'</font><font color="#990000">}])</font> <font color="#990000">==</font> False
+
+<i><font color="#9A1900"># Define a list that contains one string and one dictionary:</font></i>
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">([</font>str<font color="#990000">,</font> <font color="#990000">{}],</font> <font color="#990000">[</font><font color="#FF0000">'foo'</font><font color="#990000">,</font> <font color="#990000">{}])</font>
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">([</font>str<font color="#990000">,</font> <font color="#990000">{}],</font> <font color="#990000">[</font><font color="#993399">1</font><font color="#990000">,</font> <font color="#990000">{}])</font> <font color="#990000">==</font> False
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">([</font>str<font color="#990000">,</font> <font color="#990000">{}],</font> <font color="#990000">[</font><font color="#FF0000">'foo'</font><font color="#990000">,</font> <font color="#993399">1</font><font color="#990000">])</font> <font color="#990000">==</font> False
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">([</font>str<font color="#990000">,</font> <font color="#990000">{}],</font> <font color="#990000">[</font><font color="#FF0000">'foo'</font><font color="#990000">,</font> <font color="#990000">{},</font> <font color="#993399">3</font><font color="#990000">])</font> <font color="#990000">==</font> False <i><font color="#9A1900"># Too long a list</font></i>
+
+<i><font color="#9A1900"># Extra keys are allowed in the dictionary. Even if only 'x' key is specified,</font></i>
+<i><font color="#9A1900"># other keys are allowed. This was a choice to make message protocols</font></i>
+<i><font color="#9A1900"># extensible.</font></i>
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">({</font><font color="#FF0000">'age'</font><font color="#990000">:</font> int<font color="#990000">},</font> <font color="#990000">{</font><font color="#FF0000">'age'</font><font color="#990000">:</font> <font color="#993399">1</font><font color="#990000">,</font> <font color="#FF0000">'other'</font><font color="#990000">:</font> <font color="#FF0000">'stuff'</font><font color="#990000">})</font>
+
+<i><font color="#9A1900"># Require positive integers by using lambdas</font></i>
+<b><font color="#0000FF">assert</font></b> <b><font color="#000000">validate</font></b><font color="#990000">({</font><font color="#FF0000">'x'</font><font color="#990000">:</font> <b><font color="#0000FF">lambda</font></b> x<font color="#990000">:</font> <b><font color="#000000">type</font></b><font color="#990000">(</font>x<font color="#990000">)</font> <font color="#990000">==</font> int <b><font color="#0000FF">and</font></b> x <font color="#990000">&gt;</font> <font color="#993399">0</font><font color="#990000">},</font> <font color="#990000">{</font><font color="#FF0000">'x'</font><font color="#990000">:</font> <font color="#990000">-</font><font color="#993399">1</font><font color="#990000">})</font> <font color="#990000">==</font> False
+
+<i><font color="#9A1900"># bencode example</font></i>
+
+blob <font color="#990000">=</font> <b><font color="#000000">read_from_socket</font></b><font color="#990000">()</font>
+<b><font color="#0000FF">if</font></b> blob <font color="#990000">==</font> None<font color="#990000">:</font>
+    <b><font color="#0000FF">return</font></b>
+specification <font color="#990000">=</font> <font color="#990000">{</font><font color="#FF0000">'name'</font><font color="#990000">:</font> str<font color="#990000">,</font>
+                 <b><font color="#000000">OPTIONAL_KEY</font></b><font color="#990000">(</font><font color="#FF0000">'email'</font><font color="#990000">):</font> str<font color="#990000">,</font>
+                 <b><font color="#000000">OPTIONAL_KEY</font></b><font color="#990000">(</font><font color="#FF0000">'age'</font><font color="#990000">):</font> int<font color="#990000">,</font>
+                 <font color="#FF0000">'a-list'</font><font color="#990000">:</font> <font color="#990000">[],</font>
+                 <font color="#FF0000">'non-empty-string-list'</font><font color="#990000">:</font> <font color="#990000">[</font>ONE_OR_MORE<font color="#990000">,</font> str<font color="#990000">],</font>
+                <font color="#990000">}</font>
+msg <font color="#990000">=</font> <b><font color="#000000">fmt_bdecode</font></b><font color="#990000">(</font>specification<font color="#990000">,</font> blob<font color="#990000">)</font>
+<b><font color="#0000FF">if</font></b> msg <font color="#990000">==</font> None<font color="#990000">:</font>
+    <i><font color="#9A1900"># Invalid object</font></i>
+    <b><font color="#0000FF">return</font></b>
+
+<i><font color="#9A1900"># Now it is guaranteed that msg is a dictionary with previous specification.</font></i>
+<i><font color="#9A1900"># msg['name'] exists, msg['email'] and msg['age'] may exist.</font></i>
+<i><font color="#9A1900"># If msg['email'] exists, it is a string. If msg['age'] exists, it is an</font></i>
+<i><font color="#9A1900"># integer. 'a-list' exists and it is</font></i>
+<i><font color="#9A1900"># a list, but nothing is specified about type inside the list.</font></i>
+<i><font color="#9A1900"># msg['non-empty-string-list'] exists, and it is a non-empty list that</font></i>
+<i><font color="#9A1900"># contains strings.</font></i>
+</tt></pre>
+
+<h2>Author</h2>
+<p>
+<a href="mailto:heikki.orsila@iki.fi">Heikki Orsila</a>
+
+<h2>Acknowledgements</h2>
+<p>Thanks to Janne Kulmala for the idea of using Python's iterators and
+type system in syntax.
+</body>
+</html>

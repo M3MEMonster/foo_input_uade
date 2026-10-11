@@ -1,0 +1,44 @@
+Short:    EaglePlayer "Dirk Bialluch" external replayer
+Author:   Wanted Team
+Uploader: Don Adan <DonAdan@wp.pl>
+Version:  1
+Type:     mus/play
+
+This is a new external "Dirk Bialluch" replay for EaglePlayer 1.54/2.00+.
+It's a player for all known "Dirk Bialluch" modules.
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- Balance
+- ModuleInfo with Position Counter
+- Volume
+- SongEnd
+- SubSong
+- special Amplifier version (EP 2.00+ only)
+
+Notes:
+
+1. This soundformat was used in "Time Lock" game only (?).
+
+2. If you have, or know of, unsupported "Dirk Bialluch" modules
+   please contact Wanted Team.
+
+3. Default file prefixes are:
+
+   Songdata - TPU. (for example: TPU.TimeLock title)
+   Samples  - SMP. (for example: SMP.TimeLock title)
+
+4. You can choose your preferred player version for use with EP 2.00+.
+
+   The sound output of the Amplifier version in the Fast RAM Amplifier mode
+   is sometimes very poor. I'm not sure why but perhaps it is another EP2
+   bug. Sources for both player versions are available on the WT page.
+
+5. You can get the latest versions of Wanted Team products from:
+
+   http://amiga.emucamp.com/wt/wt.html

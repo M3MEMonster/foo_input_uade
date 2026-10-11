@@ -1,0 +1,195 @@
+AR = ar
+CC = {CC}
+CFLAGS = -W -Wall -O2 -I include -g -pthread -D_DEFAULT_SOURCE
+LDFLAGS = -lm -lpthread
+INSTALL = install
+PREFIX = /usr/local
+
+TEST_LINK_FLAG = -Wl,-rpath,.
+
+SHARED_LIBRARY_CFLAGS = -fpic -pthread
+SHARED_LIBRARY_LDFLAGS = -shared -lm -pthread
+SHARED_PACK = shared_pack.lo
+STATIC_PACK = static_pack.o
+
+Z_LIB = libzakalwe.so
+
+Z_LIB_MODULES = array.lo base.lo bitfield.lo endianess.lo \
+		file.lo \
+                input.lo \
+		math.lo mem.lo norm_inv_table_65536.lo \
+		random.lo string.lo \
+		str_array.lo \
+		time.lo \
+		unix-support.lo
+
+Z_LIB_STATIC_MODULES = array.o base.o bitfield.o endianess.o \
+		   file.o \
+                   input.o \
+		   math.o mem.o norm_inv_table_65536.o \
+		   random.o string.o \
+		   str_array.o \
+		   time.o \
+		   unix-support.o
+
+Z_LIB_MODULES_NEXT = digraph.lo hash64.lo thread.lo
+
+GENERAL_DEPS = include/zakalwe/base.h \
+	       include/zakalwe/compiler.h \
+	       include/zakalwe/config.h \
+	       include/zakalwe/math.h \
+	       include/zakalwe/mem.h
+
+Z_TEST_BIN = array-test base-test bitfield-test \
+	     digraph-test endianess-test \
+             file-test \
+             hash64-test header-test \
+	     map-test math-test mem-test \
+	     random-test str_array-test string-util-test \
+	     str_array-test \
+	     thread-util-test \
+	     time-test
+
+.PHONY: check clean test valgrindcheck
+
+all:	$(Z_LIB) $(Z_TEST_BIN)
+
+%.o:	%.c
+	$(CC) $(CFLAGS) -c $<
+
+%.lo:	%.c
+	$(CC) $(CFLAGS) $(SHARED_LIBRARY_CFLAGS) -c $< -o $@
+
+array-test:	array-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) $(LDFLAGS)
+
+base-test:	base-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) $(LDFLAGS)
+
+bitfield-test:	bitfield-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) $(LDFLAGS)
+
+digraph-test:	digraph-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) digraph.lo $(LDFLAGS)
+
+endianess-test: endianess-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) $(LDFLAGS)
+
+file-test:	file-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) $(LDFLAGS)
+
+hash64-test:	hash64-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) hash64.lo $(LDFLAGS)
+
+header-test:	header-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) $(LDFLAGS)
+
+map-test.o:	map-test.c include/zakalwe/map.h include/zakalwe/tree.h
+
+map-test:	map-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) $(LDFLAGS)
+
+math-test:	math-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) $(LDFLAGS)
+
+mem-test:	mem-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) $(LDFLAGS)
+
+ptrarray-test:	ptrarray-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) $(LDFLAGS)
+
+random-test:	random-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) $(LDFLAGS)
+
+set-test:	set-test.o include/zakalwe/set.h include/zakalwe/array.h $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) $(LDFLAGS)
+
+str_array-test:	str_array-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) $(LDFLAGS)
+
+string-util-test:	string-util-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) $(LDFLAGS)
+
+thread-util-test:	thread-util-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< thread.lo $(SHARED_PACK) $(LDFLAGS)
+
+time-test:	time-test.o $(SHARED_PACK)
+	$(CC) $(TEST_LINK_FLAG) -o $@ $< $(SHARED_PACK) $(LDFLAGS)
+
+
+array-test.o:	array-test.c array.lo bitfield.lo $(GENERAL_DEPS)
+base-test.o:	base-test.c $(GENERAL_DEPS)
+bitfield-test.o:	bitfield-test.c bitfield.lo $(GENERAL_DEPS)
+digraph-test.o:	digraph-test.c digraph.lo $(GENERAL_DEPS)
+endianess-test.o:	endianess-test.c include/zakalwe/endianess.h $(GENERAL_DEPS)
+file-test.o:	file-test.c $(GENERAL_DEPS)
+hash64-test.o:	hash64-test.c hash64.lo $(GENERAL_DEPS)
+header-test.o:	header-test.c $(GENERAL_DEPS)
+math-test.o:	math-test.c math.lo $(GENERAL_DEPS)
+mem-test.o:	mem-test.c mem.lo $(GENERAL_DEPS)
+ptrarray-test.o:	ptrarray-test.c ptrarray.lo $(GENERAL_DEPS)
+random-test.o:	random-test.c random.lo $(GENERAL_DEPS)
+str_array-test.o:	str_array-test.c str_array.lo $(GENERAL_DEPS)
+string-util-test.o:	string-util-test.c string.lo $(GENERAL_DEPS)
+thread-util-test.o:	thread-util-test.c thread.lo $(GENERAL_DEPS)
+time-test.o:	time-test.c time.lo $(GENERAL_DEPS)
+
+$(STATIC_PACK):	$(Z_LIB_STATIC_MODULES)
+	$(AR) cr $@ $(Z_LIB_STATIC_MODULES)
+
+$(SHARED_PACK):	$(Z_LIB_MODULES)
+	$(CC) $(SHARED_LIBRARY_LDFLAGS) -o $@ $(Z_LIB_MODULES)
+
+$(Z_LIB):	$(SHARED_PACK)
+	$(CC) $(SHARED_LIBRARY_LDFLAGS) $(Z_LIB_MODULES) -o $@ -Wl,-soname,$@
+
+array.lo:	array.c include/zakalwe/array.h $(GENERAL_DEPS)
+array.o:	array.c include/zakalwe/array.h $(GENERAL_DEPS)
+base.lo:	base.c $(GENERAL_DEPS)
+base.o:	base.c $(GENERAL_DEPS)
+bitfield.lo:	bitfield.c include/zakalwe/bitfield.h $(GENERAL_DEPS)
+bitfield.o:	bitfield.c include/zakalwe/bitfield.h $(GENERAL_DEPS)
+digraph.lo:	digraph.c include/zakalwe/next/digraph.h $(GENERAL_DEPS)
+digraph.o:	digraph.c include/zakalwe/next/digraph.h $(GENERAL_DEPS)
+endianess.lo:	endianess.c include/zakalwe/endianess.h $(GENERAL_DEPS)
+endianess.o:	endianess.c include/zakalwe/endianess.h $(GENERAL_DEPS)
+file.lo:	file.c include/zakalwe/file.h $(GENERAL_DEPS)
+file.o:	file.c include/zakalwe/file.h $(GENERAL_DEPS)
+hash64.lo:	hash64.c include/zakalwe/next/hash64.h $(GENERAL_DEPS)
+hash64.o:	hash64.c include/zakalwe/next/hash64.h $(GENERAL_DEPS)
+input.lo:	input.c include/zakalwe/input.h $(GENERAL_DEPS)
+input.o:	input.c include/zakalwe/input.h $(GENERAL_DEPS)
+math.lo:	math.c $(GENERAL_DEPS)
+math.o:	math.c $(GENERAL_DEPS)
+mem.lo:		mem.c $(GENERAL_DEPS)
+mem.o:		mem.c $(GENERAL_DEPS)
+norm_inv_table_65536.lo:	norm_inv_table_65536.c norm_inv_table_65536.h
+norm_inv_table_65536.o:	norm_inv_table_65536.c norm_inv_table_65536.h
+random.lo:	random.c include/zakalwe/random.h norm_inv_table_65536.lo $(GENERAL_DEPS)
+random.o:	random.c include/zakalwe/random.h norm_inv_table_65536.lo $(GENERAL_DEPS)
+string.lo:	string.c include/zakalwe/string.h $(GENERAL_DEPS)
+string.o:	string.c include/zakalwe/string.h $(GENERAL_DEPS)
+str_array.lo:	str_array.c include/zakalwe/str_array.h $(GENERAL_DEPS)
+str_array.o:	str_array.c include/zakalwe/str_array.h $(GENERAL_DEPS)
+thread.lo:	thread.c include/zakalwe/next/thread.h $(GENERAL_DEPS)
+thread.o:	thread.c include/zakalwe/next/thread.h $(GENERAL_DEPS)
+time.lo:	time.c include/zakalwe/time.h $(GENERAL_DEPS)
+time.o:	time.c include/zakalwe/time.h $(GENERAL_DEPS)
+unix-support.lo:	unix-support.c include/zakalwe/unix-support.h $(GENERAL_DEPS)
+unix-support.o:	unix-support.c include/zakalwe/unix-support.h $(GENERAL_DEPS)
+
+install:	all
+	$(INSTALL) -m 644 libzakalwe.so "$(PREFIX)/lib"/
+	mkdir -p -m 755 "$(PREFIX)/include/zakalwe"
+	$(INSTALL) -m 644 include/zakalwe/*.h "$(PREFIX)/include/zakalwe"/
+
+clean:	
+	rm -f $(Z_TEST_BIN) *.o *.lo *.so
+
+check:	all
+	for testbin in $(Z_TEST_BIN) ; do echo $$testbin ; ./$$testbin ; done
+
+test:	check
+
+valgrindcheck:	all
+	for testbin in $(Z_TEST_BIN) ; do echo $$testbin ; valgrind --trace-children=yes --leak-check=full ./$$testbin ; done

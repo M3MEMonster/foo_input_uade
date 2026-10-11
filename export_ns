@@ -1,0 +1,19 @@
+#!/bin/bash
+#
+# Run source export_ns in any working directory to export the python/
+# directory into PYTHONPATH.
+
+function setup_python_path() {
+    # The reason why declare a function to set PYTHONPATH is that "local"
+    # keyword only works in function context, and we don't want to export
+    # BASE_DIR and PYTHON_DIR variables externally.
+    local BASE_DIR=$(dirname "$(realpath "${BASH_ARGV[0]}")")
+    local PYTHON_DIR="${BASE_DIR}/python"
+    if [[ -z "${PYTHONPATH}" ]] ; then
+	export PYTHONPATH="${PYTHON_DIR}"
+    elif [[ -z "$(echo "${PYTHONPATH}" |grep "${PYTHON_DIR}")" ]] ; then
+	export PYTHONPATH="${PYTHONPATH}:${PYTHON_DIR}"
+    fi
+}
+
+setup_python_path

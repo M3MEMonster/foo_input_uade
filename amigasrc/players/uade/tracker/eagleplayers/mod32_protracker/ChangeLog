@@ -1,0 +1,15 @@
+2025-05-17
+- fixed issue with bogus subsongs
+
+2025-05-14
+- tweaked CIA vs VBLANK heuristic:
+-- now triggered if CIA modlen >= 8 minutes and selects whichever ever is shorter (matches openmpt and libxmp)
+-- (previously trigger was >= 20 minutes and CIA modlen had to be 2x for VBLANK to get selected)
+-- enforce CIA if Fxx used for both BPM and speed in same row (openmpt)
+- enable VBLANK heuristic for "Protracker compatible" mods as well (AMP:Walkman/MOD.klisje paa klisje and others)
+- use PTK1.1a replay mode when VBLANK detected
+
+2025-04-30
+- updated to latest(?) version (2015-07-07) from mld: https://gitlab.com/uade-music-player/uade/-/merge_requests/2
+- vasm support and makefile added
+- fixed playback of empty samples: https://gitlab.com/uade-music-player/uade/-/issues/76

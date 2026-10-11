@@ -1,0 +1,3 @@
+[submodule "libzakalwe"]
+	path = libzakalwe
+	url = https://gitlab.com/hors/libzakalwe

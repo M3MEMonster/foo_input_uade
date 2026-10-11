@@ -1,0 +1,43 @@
+Short:        EaglePlayer "Janne Salmijarvi Optimizer" external replayer
+Author:       Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      1
+Type:         mus/play
+Architecture: m68k-amigaos
+
+This is a new external "Janne Salmijarvi Optimizer" module replay for
+EaglePlayer 1.54/2.00+. It's a player for all known "Janne Salmijarvi
+Optimizer" modules.
+
+Version 1
+
+- Analyzer
+- Voices
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- PatternJump
+- Balance
+- ModuleInfo with Position Counter
+- Volume
+- SongEnd
+- Save
+- capable of finding the author's name with the EP FindAuthor routine
+- PatternScroll
+- special Amplifier version (EP 2.00+ only)
+
+Notes:
+
+1. This soundformat was used only (?) in music disk "A Taste Of U4IA"
+   by Megawatts.
+
+2. Sometimes it's better to disable the Unic-Tracker player in the EP
+   Manager menu because the Unic-Tracker recognition code isn't perfect.
+
+3. You can choose your preferred player version for use with EP 2.00+.
+
+4. You can get the latest versions of Wanted Team products from:
+
+   http://wt.exotica.org.uk
+
+Special greetings go to
+
+- Jan Krolzig for inspiration and betatesting

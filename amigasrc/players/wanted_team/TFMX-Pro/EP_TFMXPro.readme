@@ -1,0 +1,129 @@
+Short:	      EaglePlayer "TFMX Pro" external replayer
+Author:       Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      5
+Type:	      mus/play
+Replaces:     mus/play/EP_TFMXPro.lha
+Architecture: m68k-amigaos
+
+This is a new version of the different external "TFMX Pro" replay for
+EaglePlayer 1.54/2.00+. It's a player for all (?) modules created with
+TFMX Pro.
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- Volume
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- SubSong
+- Balance
+- SongEnd
+- ModuleInfo with Position Counter
+- PatternJump
+- Save
+- Config (requires Kickstart V37+)
+- as a bonus, attached is an EagleRipper for TFMX modules (all formats)
+- as a second bonus, attached is a fixed version of EP's 1.54 ModuleInfo (FreeWare)
+
+Version 2
+
+- capable of finding the author's name with the EP FindAuthor routine
+
+Version 3
+
+- added Save option for the Config routine
+- changed Analyzer code
+- some changes/fixes in player
+
+Version 4
+
+- fixed the Config routine, now the Workbench screen is correctly unlocked
+  (Thanks to Luca 'Hexaae' Longone and 'Agony')
+
+Version 5
+
+- loading configuration from "Configs/" directory is now fixed
+- added support for 60Hz songs (perhaps "Master Blazer" tunes)
+- added support for songs used in some PC games, which using Pro Audio
+  Spektrum Plus Driver Version 0.05 (C)1993,94 SUN-PROJECT!
+- extended Config, added support for external (tfmx.obj) replays
+
+Notes:
+
+1. This player correctly plays TFMX Pro modules only!!! For TFMX 1.x songs
+   use the TFMX player (mus/play/EP_TFMX.lha). Original TFMX Pro modules
+   (from games) are always recognized correctly, but on the Internet (on
+   Exotica for example) there are some songs from the Soundfactory CD. Don't
+   use these songs with this player, because some mdat files are damaged and
+   all TFMX 1.x, Pro, and 7V songs on this CD are packed ("stripped"), while
+   original TFMX 1.x songs (for example "Turrican I" songs) never use the
+   packed format.
+
+2. This version of the TFMX Pro player is configurable via the EP player
+   manager. You can set replay type as:
+
+   - VBI wait (default)
+   - DMA wait
+   - external
+
+   The configuration will be saved to the "EnvArc:EaglePlayer/" and/or
+   "Configs/" directories. If none of these directories exist then
+   the configuration can not be saved.
+
+3. Default file prefixes for:
+
+   songdata - MDAT. (for example: MDAT.MonkeyIsland)
+   samples  - SMPL. (for example: SMPL.MonkeyIsland)
+   replay   - TFMX. (for example: TFMX.MonkeyIsland)
+
+   BTW. You can use also "tfmx.obj" for external replay name.
+
+4. External "tfmx.obj" routines are not compatible and if you use the wrong
+   routine for the wrong module then the module might play badly or even
+   crash your Amiga!!!
+
+5. The fixed version of EP's 1.54 ModuleInfo can handle a position counter
+   of up to 999 positions (the original version is limited to 255 positions
+   only).
+
+6. ModuleInfo works/looks better for EaglePlayer 1.54 because EaglePlayer
+   2.00+ doesn't refresh the ModuleInfo screen.
+
+7. Only for EP 1.54 users: (still the best Amiga modules player ever :-) )
+   "List of Samples" and "Number of Samples" are actually "List of
+   Instruments" and "Number of Instruments".
+
+8. For ripping sample files with the attached ripper the data file (mdat),
+   sample file (smpl), and initialized (!!!) replay file (tfmx.obj) must all
+   be stored inside the loaded file (which should be a file containing Chip
+   RAM that was saved to disk). You can save Chip RAM with Action Replay,
+   WHDload, JST, ChipSaver, Exotic Ripper, Thrill Kill, HrtMon or some other
+   Amiga monitor. Also, remember that sometimes more than one mdat file
+   exists inside saved Chip RAM (for example in the game "Apidya 2"). You
+   have to choose the right one or save all available mdat files if you want
+   to rip the correct smpl file. Besides, sometimes more than one initialized
+   replay exists inside saved Chip RAM. Then you have to clear the first
+   replay if wrong samples are saved. Also note that in "Pass 2" mode you
+   can rip some protected (without header) TFMX modules, for example
+   "Hard'N'Heavy" songs, the "Turrican 2" loading tune and the "Apidya"
+   loading tune.
+
+9. You can also listen to SFX songs with this "TFMX Pro" player, but only
+   if normal songs don't exist.
+
+10. You can get the latest versions of Wanted Team products from:
+
+    https://exotica.org.uk
+
+Our special thanks go to following people:
+
+- Philip 'Pepto' Timmermann for support
+- Jan Krolzig for betatesting
+- Peter Kunath for help
+- TFMX musicians for nice songs
+- Sunbeam/Digital Corruption for inspiration
+- Francesco Pretto for "Monkey Island" bug report
+- Rune 'Flash Fox' Larsen for support

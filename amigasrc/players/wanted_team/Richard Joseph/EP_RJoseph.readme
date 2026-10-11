@@ -1,0 +1,51 @@
+Short:        EaglePlayer "Richard Joseph" external replayer
+Author:       Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      2
+Type:         mus/play
+Replaces:     mus/play/EP_RJoseph.lha
+Architecture: m68k-amigaos
+
+This is a new version of an external "Richard Joseph" module replay for
+EaglePlayer 1.54/2.00+.
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- Volume
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- Balance
+- SongEnd
+- ModuleInfo
+- SubSong
+
+Version 2:
+
+- removed Audio Interrupt support, no more DMA wait problems for fastest
+  Amigas
+
+Notes:
+
+1. Prior to the more common "Richard Joseph Player" format came this
+   format - which only appears to have been used by Richard Joseph (one
+   of the best Amiga musicians).
+
+2. To play "Richard Joseph" music every module must first be converted to a
+   special format which is very similar to EaglePlayer's "Dave Lowe" format.
+   For more information please contact the Wanted Team.
+
+3. If you have the missing music sample for the unused 7th subsong of the 
+   game "Lure Of The Temptress", please contact Wanted Team.
+
+4. You can get the latest versions of Wanted Team products from:
+
+   http://wt.exotica.org.uk
+
+Special greetings go to:
+
+- Sunbeam/digital corruption (13276337) for help and inspiration
+- famous Rik Jo for music
+- my betatesters

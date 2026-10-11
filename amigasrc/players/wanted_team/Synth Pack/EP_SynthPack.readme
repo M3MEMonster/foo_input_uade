@@ -1,0 +1,47 @@
+Short:    EaglePlayer "Synth Pack" external replayer
+Author:   Wanted Team
+Uploader: wt@jho.pol.pl (Don Adan/Wanted Team)
+Version:  2
+Type:     mus/play
+Replaces: mus/play/EP_SynthPack.lha
+
+This is a new version of external module replayer for EaglePlayer 1.54/2.00+.
+It's a replayer for all (?) known "Synth Pack" (Amiga) modules.
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- Volume
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- Balance
+- SongEnd
+- ModuleInfo with Position Counter
+- SubSong
+- Save
+
+Version 2
+
+- fixed subsong check
+
+Notes:
+
+1. This player works with both (packed and unpacked) songdata files.
+
+2. Default file prefixes for:
+   song file - OSP. (for example: OSP.CenterBase title)
+   samples   - SMP. (for example: SMP.CenterBase title)
+
+   BTW. You can use also "SMP.set" for samples name.
+
+3. The latest version of EP players released by Wanted Team are available
+   on Wanted Team's FTP:
+
+address    ftp.union.org.pl (temporary offline)
+login      krzak
+password   Rozany1
+catalog    /Players/
+
+4. Email wt@jho.pol.pl might not be valid after March 2000.

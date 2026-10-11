@@ -1,0 +1,117 @@
+# Top-level Makefile for UADE
+
+.PHONY: test
+
+MAKE = {MAKE}
+
+BINDIR = $(DESTDIR){PACKAGEPREFIX}{BINDIR}
+DATADIR = $(DESTDIR){PACKAGEPREFIX}{DATADIR}
+UADECOREDIR = $(DESTDIR){PACKAGEPREFIX}{UADECOREDIR}
+MANDIR = $(DESTDIR){PACKAGEPREFIX}{MANDIR}
+
+UADECORENAME={UADECORENAME}
+UADE123NAME={UADE123NAME}
+
+COMPILE_RULES = {COMPILE_RULES}
+INSTALL_RULES = {INSTALL_RULES}
+
+all:	src/frontends/include/uade/options.h $(COMPILE_RULES)
+
+staticlibuade:	
+	$(MAKE) -C src/frontends/common
+
+libuade:
+	$(MAKE) -C src/frontends/libuade
+
+libuade-install:	
+	$(MAKE) -C src/frontends/libuade install
+
+uadecore:	
+	$(MAKE) -C src
+
+uadecore-install:	
+	mkdir -p "$(DATADIR)"
+	test -e "$(DATADIR)/uade.conf" || cp -f uade.conf "$(DATADIR)/"
+	cp -f amigasrc/score/score uaerc eagleplayer.conf "$(DATADIR)/"
+	cp -rf players "$(DATADIR)/" || true
+	chmod -R og+rX "$(DATADIR)"
+
+	$(MAKE) -C src install
+
+uade123:	staticlibuade
+	$(MAKE) -C src/frontends/uade123
+
+uade123-install:	uade123
+	mkdir -p "$(MANDIR)"
+	cp doc/uade123.1 "$(MANDIR)"/
+	chmod og+r "$(MANDIR)"/uade123.1
+
+	$(MAKE) -C src/frontends/uade123 install
+
+uadefs:	staticlibuade
+	$(MAKE) -C src/frontends/uadefs
+
+uadefs-install:	uadefs
+	$(MAKE) -C src/frontends/uadefs install
+
+score:
+	$(MAKE) -C amigasrc/score
+
+score-install:	
+	@true
+
+build-players:
+	$(MAKE) -C amigasrc/players
+
+build-players-install:
+	@true
+
+uadesimple:	staticlibuade
+	$(MAKE) -C src/frontends/uadesimple
+
+uadesimple-install: uadesimple
+
+src/frontends/include/uade/options.h:	
+	@echo ""
+	@echo "Run ./configure first!"
+	@echo ""
+	@false
+
+soundcheck:	
+	@ echo ""
+	@ echo "### UADE should be playing now 'AHX.Cruisin'"
+	@ echo ""
+	src/frontends/uade123/$(UADE123NAME) --basedir=. -S amigasrc/score/score -P players/AbyssHighestExperience songs/AHX.Cruisin -u src/uadecore
+
+writeaudio:
+	$(MAKE) -C write_audio
+
+writeaudio-install:
+	{PYTHON_INTERPRETER} setup.py install {PYTHON_SETUP_ARGS}
+	install -m 755 write_audio/write_audio "$(UADECOREDIR)"/
+	install -m 755 write_audio/generate_amiga_oscilloscope_view write_audio/uadescope "$(BINDIR)"/
+
+install:	$(INSTALL_RULES)
+	@echo
+
+feclean:	
+	$(MAKE) -C src/frontends/common clean
+	$(MAKE) -C src/frontends/libuade clean
+	$(MAKE) -C src/frontends/uade123 clean
+	$(MAKE) -C src/frontends/uadefs clean
+	$(MAKE) -C src/frontends/uadesimple clean
+	$(MAKE) -C amigasrc/score clean
+
+test:
+	$(MAKE) -C python/uade test
+
+clean:	
+	$(MAKE) -C src clean
+	$(MAKE) feclean
+	$(MAKE) -C write_audio clean
+
+check:	all
+
+installcheck:	check
+
+distclean:	clean

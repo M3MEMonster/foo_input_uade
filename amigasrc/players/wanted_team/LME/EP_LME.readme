@@ -1,0 +1,44 @@
+Short:        EaglePlayer "Leggless Music Editor" external replayer
+Author:       Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      3
+Type:         mus/play
+Replaces:     mus/play/EP_LME.lha
+Architecture: m68k-amigaos
+
+This is a new version of a different external "Leggless Music Editor"
+replay for EaglePlayer 1.54/2.00+. It's a player for all known LME modules.
+
+Version 1
+
+Features:
+
+- Analyzer done by Mike Herrin (Thanks !!!)
+- Voices
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- SubSong
+- Balance
+- ModuleInfo with Position Counter
+- Volume
+- SongEnd
+- Save
+- as a bonus, attached is an EagleRipper for LME modules
+
+Version 2
+
+- some changes/fixes
+- added an Amplifier version (EP 2.00+ only)
+
+Version 3
+
+- fixed my bug, thanks to Phil "meynaf" G. for help
+
+Notes:
+
+1. If you have "Leggless Music Editor" please contact Wanted Team.
+
+2. Now you can choose your preferred player version for use with EP 2.00+.
+
+3. You can get the latest versions of Wanted Team products from:
+
+   https://exotica.org.uk

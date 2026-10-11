@@ -1,0 +1,67 @@
+Short:        EaglePlayer "Special FX ST" external replayer
+Author:       Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      4
+Type:         mus/play
+Replaces:     mus/play/EP_SpecialFXST.lha
+Architecture: m68k-amigaos
+
+This is a new version of "Special FX ST" module replayer for EaglePlayer 1.54/2.00+.
+It's a player for all (?) known "Special FX" (Atari ST) modules.
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- Balance
+- ModuleInfo with Position Counter
+- Volume
+- SubSong
+- SongEnd
+- LoadFast
+
+Version 2
+
+- added support for second YM2149 emulation routine
+- added Config (requires Kickstart V37+)
+
+Version 3
+
+- some changes/fixes in emulation code
+
+- fixed emulation code
+
+Notes:
+
+1. This soundformat was used primarily by Jonathan Dunn, Matthew Cannon,
+   Dean Evans and Keith Tinman. It was mainly used in games made by
+   the Special FX team and published by Ocean.
+
+2. This player uses Atari ST soundchip emulators written by Jochen Hippel
+   and meynaf.
+
+3. This version of the "Special FX ST" player is configurable via the EP
+   player manager. Two ("Mad Max" and "meynaf") different YM2149 emulation
+   routines are available, you can choose between them. The default set
+   is "Mad Max" emulation. The configuration will be saved to either the
+   "EnvArc:EaglePlayer/" and/or "Configs/" directories. If neither of these
+   directories exist the configuration will not be saved.
+
+4. ModuleInfo works/looks better for EaglePlayer 1.54 because EaglePlayer
+   2.00+ doesn't refresh the ModuleInfo screen.
+
+5. If you have, or know of unsupported or unknown "Special FX ST" modules
+   please contact the Wanted Team.
+
+6. You can get the latest versions of Wanted Team products from:
+
+   https://exotica.org.uk
+
+Special greetings go to:
+
+- Jochen Hippel for Atari ST soundchip emulator
+- Peter Kunath for DMA waiting routine
+- Phil "meynaf" G. for Atari ST soundchip emulator
+- Jan Krolzig for betatesting

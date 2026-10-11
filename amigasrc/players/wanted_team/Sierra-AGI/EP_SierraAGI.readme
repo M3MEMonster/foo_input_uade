@@ -1,0 +1,50 @@
+Short:    EaglePlayer "Sierra AGI" external replayer
+Author:   Wanted Team
+Uploader: Don Adan <DonAdan@wp.pl>
+Version:  1
+Type:     mus/play
+
+This is a new external "Sierra AGI" replay for EaglePlayer 1.54/2.00+.
+It's a player for all known "Sierra AGI" modules.
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- Balance
+- ModuleInfo
+- Volume
+- SongEnd
+- Save
+- Config (requires Kickstart V37+)
+- as a bonus, an EagleRipper for "Sierra AGI" modules is included
+- special Amplifier version (EP 2.00+ only)
+
+Notes:
+
+1. This sound format was used in the first Sierra games which used the 
+   AGI (Adventure Game Interpreter) system.
+
+2. This replayer plays tunes from Amiga and PC versions of Sierra games.
+   Tunes from Atari ST versions are not tested, but can works.
+
+3. This version of the "Sierra AGI" player is configurable via the EP player
+   manager. Two different play routines were used on the Amiga, you can choose
+   between them. The default set is V.1 replay. The configuration will be
+   saved to either the "EnvArc:EaglePlayer/" and/or "Configs/" directories.
+   If neither of these directories exist the configuration will not be saved.
+
+4. You can choose your preferred player version for use with EP 2.00+.
+
+5. Attached ripper can only rip unpacked songs from AGI data files called
+   "vol.0", "vol.1" etc.
+
+6. You can get the latest versions of Wanted Team products from:
+
+   http://amiga.emucamp.com/wt/wt.html
+
+Special greetings go to
+
+- Bernd Gmeineder for help

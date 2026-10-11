@@ -1,0 +1,44 @@
+Short:        EaglePlayer "TimeTracker" external replayer
+Author:       Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      1
+Type:         mus/play
+Architecture: m68k-amigaos
+
+This is a new external "TimeTracker" module replay for EaglePlayer 1.54/2.00+.
+It's a player for all known "TimeTracker" modules.
+
+Version 1
+
+- Analyzer
+- Voices
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- Balance
+- ModuleInfo with Position Counter
+- Volume
+- SongEnd
+- SubSong
+- special Amplifier version (EP 2.00+ only)
+
+Notes:
+
+1. This soundformat was used in some Eremation productions.
+
+2. Default file prefixes are:
+
+   Songdata - TMK. (for example: TMK.Tourists)
+   Samples  - SMP. (for example: SMP.Tourists)
+
+3. You can choose your preferred player version for use with EP 2.00+.
+
+   The sound output of the Amplifier version in the Fast RAM Amplifier mode
+   is sometimes very poor. I'm not sure why but perhaps it is another EP2
+   bug. Sources for both player versions are available on the WT page.
+
+4. You can get the latest versions of Wanted Team products from:
+
+   https://exotica.org.uk
+
+Special greetings go to
+
+- Jan Krolzig for inspiration and betatesting

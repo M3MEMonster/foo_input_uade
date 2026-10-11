@@ -1,0 +1,5849 @@
+;POKEYNOISE-PLAYER V0.14ALPHA
+;EMULATION OF POKEY-SOUND-CHIPS OF THE ATARI 800 XL
+;BY ACHIM HÄRTEL
+;This software is freeware
+
+;Known bugs: Loading the player, playing a sound and expunging the player 
+;  causes a crash at the 3rd time playing
+
+;The used MOVEP will be emulated by the 68060-library on 68060
+
+;PLEASE COMMENT OUT UNUSED PARTS WITH "IFEQ 1, ENDC"
+
+
+	INCDIR	asm-one:INCLUDE2.0/
+
+	INCLUDE	MISC/DELIPLAYER.I
+	INCLUDE LIBRARIES/DOS_LIB.I
+	INCLUDE	LIBRARIES/DOS.I
+	INCLUDE EXEC/EXEC_LIB.I
+	INCLUDE	EXEC/MEMORY.I
+	INCLUDE	GRAPHICS/GRAPHICS_LIB.I
+	INCLUDE	GRAPHICS/GFXBASE.I
+	INCLUDE INTUITION/INTUITION_LIB.I
+	INCLUDE INTUITION/INTUITION.I
+	INCLUDE	WORKBENCH/ICON_LIB.I
+	INCLUDE	WORKBENCH/WORKBENCH.I
+;	INCLUDE	OWN/CCRMAKRO
+	include	'hardware/custom.i'
+
+	INCDIR	ASM-ONE:OWN/POKEYNOISE/
+
+DEBUG=0
+DEBUG_SAP=0
+
+	IFNE	DEBUG_SAP
+RUN_SAP
+	JSR	CHECK
+	JSR	LOAD
+	RTS
+	ENDC
+
+;HERE BEGIN DELIPLAYERHEADER
+
+;2 fillwords due crashsafety on execute
+BEGIN	MOVEQ.L	#-1,D0				; was $20
+	RTS
+;recognition delitracker
+	DC.B	'DELIRIUM'
+;pointer on tags
+	DC.L	PLTAGARRAY
+;versionstring
+	DC.B	'$VER:POKEYNoise V0.25alpha',0
+	EVEN
+
+PLTAGARRAY
+;name of player
+	DC.L	DTP_PlayerName,PLAYERNAME
+;my name :)
+	DC.L	DTP_Creator,MYNAME
+;modulerecognitionroutine, special version
+	DC.L	DTP_Check2,CHECK
+;load sound
+	DC.L	DTP_InitPlayer,LOAD
+;expunge module
+	DC.L	DTP_EndPlayer,THROWOUT
+;play routine
+	DC.L	DTP_Interrupt,PLAY
+;subsongarea
+	DC.L	DTP_NewSubSongRange,SUBSONGAREA
+;initialize sound
+	DC.L	DTP_InitSound,INIT
+;config player
+	DC.L	DTP_Config,OPENWBLIB
+;silence sound on stop
+	DC.L	DTP_EndSound,SILENCEMOD
+	DC.L	0
+
+PLAYERNAME
+	DC.B	'POKEYNoise V0.25alpha',0
+	EVEN
+
+;name of creator
+MYNAME
+	DC.B	'Achim Härtel',0
+	EVEN
+
+;to initialize the player open icon.library
+OPENWBLIB
+	LEA.L	WBNAME(PC),A1
+	MOVEQ.L	#0,D0
+	MOVE.L	4.W,A6
+	JSR	_LVOOpenLibrary(A6)
+	TST.L	D0
+	BNE.S	.1
+	MOVEQ.L	#-1,D0
+	RTS
+
+;if succeeded, write pointer into wbbase
+.1	MOVE.L	D0,WBBASE
+	MOVEQ.L	#0,D0
+	RTS
+
+WBNAME	DC.B	'icon.library',0
+	EVEN
+
+;base of icon.library
+WBBASE	DC.L	0
+;icon, which is used at loaded sound
+ICONBASE	DC.L	0
+;icon, which is used for check
+ICONBASE2	DC.L	0
+
+TYPESTR	DC.B	'TYPE',0
+	EVEN
+SONGSSTR	DC.B	'SONGS',0
+	EVEN
+POKEYSTR	DC.B	'POKEY',0
+POKEYSTREND
+	EVEN
+AUDIOCORRECTSTR	DC.B	'AUDIOCORRECT',0
+AUDIOCORRECTSTREND
+	EVEN
+RHSTR	DC.B	'RH',0
+RHSTREND
+	EVEN
+
+PLAYERSTR	DC.B	'PLAYER',0
+	EVEN
+
+INITSTR	DC.B	'INIT',0
+	EVEN
+
+DEFSONGSTR	DC.B	'DEFSONG',0
+	EVEN
+
+MUSICSTR	DC.B	'MUSIC',0
+	EVEN
+
+INFONAMEBUF
+	DS.B	200
+
+SUBSONGAREA
+PLAYSONG	DC.W	0
+MINSONG	DC.W	0
+MAXSONG	DC.W	0
+
+
+VBI	DC.W	0
+MUSIC	DC.W	-1	
+	;for SAP-format
+SNDFORMAT	DC.W	0	;0-POKEYNOISE, $FFFF-SAP_INIT, 1-SAP_M (B)
+				;3-SAP_C
+;AUDIOINTSTORE	DC.L	0
+;to save userstack
+USERSTK	DC.L	0
+
+;check, if PN-module at all
+CHECK
+;.S	BRA.S	.S
+	CLR.W	SNDFORMAT
+;CHECK, IF SOUND BEGINS WITH $FF,$FF
+	IFEQ	DEBUG_SAP
+	MOVE.L	dtg_ChkData(A5),A0
+	ENDC
+
+	ifne	DEBUG_SAP
+	MOVE.L	#$B0000,A0
+	ENDC
+
+	CMP.W	#$FFFF,(A0)
+	BEQ.S	.CONT
+	MOVE.L	(A0),D0
+	LSR.L	#8,D0
+	CMP.L	#'SAP',D0
+	BEQ.S	.SAP
+	MOVEQ.L	#-1,D0
+	RTS
+
+.SAP	MOVE.W	#-1,SNDFORMAT
+	MOVEQ.L	#0,D0
+	RTS
+
+.CONT
+;GET ICON WITH workbench.library
+	TST.L	ICONBASE2
+	BNE.S	.5
+;get name of music together with path
+	CLR.B	INFONAMEBUF
+	MOVE.L	#INFONAMEBUF,dtg_PathArrayPtr(A5)
+	MOVE.L	dtg_CopyDir(A5),A0
+	JSR	(A0)
+	MOVE.L	dtg_CopyFile(A5),A0
+	JSR	(A0)
+;get icon
+	LEA.L	INFONAMEBUF(PC),A0
+	MOVE.L	WBBASE(PC),A6
+	JSR	_LVOGetDiskObject(A6)
+	TST.L	D0
+	BNE.S	.1
+	MOVEQ.L	#-1,D0
+	RTS
+
+.1	MOVE.L	D0,ICONBASE2
+;GET POINTER ON TYPE= WITH LVO_FINDTOOLTYPE
+.5	MOVE.L	ICONBASE2(PC),A0
+	MOVE.L	do_ToolTypes(A0),A0
+	LEA.L	TYPESTR(PC),A1
+	MOVE.L	WBBASE(PC),A6
+	JSR	_LVOFindToolType(A6)
+	TST.L	D0
+	BNE.S	.2
+.3
+;if no TYPE= found, release icon structure
+	MOVE.L	ICONBASE2(PC),A0
+	MOVE.L	WBBASE(PC),A6
+	JSR	_LVOFreeDiskObject(A6)
+;clear iconbase2 (isnt valid anymore)
+	CLR.L	ICONBASE2
+	MOVEQ.L	#-1,D0			;RETURNCODE: FAILED
+	RTS
+
+.2
+;CHECK FOR "POKEY"
+	MOVE.L	D0,A0
+	LEA.L	POKEYSTR(PC),A1
+	MOVEQ.L	#POKEYSTREND-POKEYSTR-1,D0
+.4	CMPM.B	(A0)+,(A1)+
+	BNE.S	.3
+	DBF	D0,.4	
+;RELEASE ICON STRUCTURE
+	MOVE.L	ICONBASE2(PC),A0
+	MOVE.L	WBBASE(PC),A6
+	JSR	_LVOFreeDiskObject(A6)
+;clear iconbase2 (isnt valid anymore)
+	CLR.L	ICONBASE2
+	MOVEQ.L	#0,D0			;RETURNCODE: SUCCESS
+	RTS
+
+LOAD
+	TST.W	SNDFORMAT
+	BNE.S	.SKIPLOADICON
+
+.PN
+;.S	BRA.S	.S
+;get name of sound together with path
+	CLR.B	INFONAMEBUF
+	MOVE.L	#INFONAMEBUF,dtg_PathArrayPtr(A5)
+	MOVE.L	dtg_CopyDir(A5),A0
+	JSR	(A0)
+	MOVE.L	dtg_CopyFile(A5),A0
+	JSR	(A0)
+	LEA.L	INFONAMEBUF(PC),A0
+;get icon belonging to the sound
+	MOVE.L	WBBASE(PC),A6
+	JSR	_LVOGetDiskObject(A6)
+	TST.L	D0
+	BNE.S	.I1
+	MOVEQ.L	#-1,D0
+	RTS
+
+;store base of icon in ICONBASE
+.I1	MOVE.L	D0,ICONBASE
+.SKIPLOADICON
+	IFEQ	DEBUG_SAP
+;reserve 64-k-block 
+	MOVE.L	4.W,A6
+	MOVE.L	#$10000,D0
+	MOVE.L	#MEMF_CLEAR,D1
+	JSR	_LVOAllocMem(A6)
+	TST.L	D0
+	BNE.S	.2
+	MOVEQ.L	#-1,D0			;RETURNCODE: FAILED
+	RTS
+
+;store base of 64k-block in AREA
+.2
+	ENDC
+	ifne	DEBUG_SAP
+	MOVE.L	#$c0000,d0
+	ENDC
+
+	MOVE.L	D0,AREA
+
+
+;SORT SOUND FROM DELITRACKERFILEAREA TO EMUMEMORY (ATARI-FILE)
+	MOVE.L	D0,A0
+	IFEQ	DEBUG_SAP
+	MOVE.L	dtg_ChkData(A5),A1
+	MOVE.L	A1,A2
+	ADD.L	dtg_ChkSize(A5),A2
+	ENDC
+	IFNE	DEBUG_SAP
+	MOVE.L	#$B0000,A1
+	MOVE.L	#$B0000+1830,A2
+	ENDC
+
+	TST.W	SNDFORMAT
+	BEQ.S	.NOHEADERTEXT
+	BRA.S	.SKIPHEADER2
+
+.SKIPHEADER1				;SKIP SAP-HEADER
+	ADDQ.L	#1,A1
+.SKIPHEADER2
+	CMP.L	A1,A2
+	BLS.W	.FAIL
+	CMP.B	#$FF,(A1)
+	BNE.S	.SKIPHEADER1
+	CMP.B	#$FF,1(A1)
+	BNE.S	.SKIPHEADER1
+	MOVE.L	A1,A3
+
+.NOHEADERTEXT
+.L4	CMP.B	#$FF,(A1)
+	BNE.S	.L1
+	CMP.B	#$FF,1(A1)
+	BNE.S	.L1
+;if segmentbegin ffff, omit it
+	LEA.L	2(A1),A1
+
+.L1	MOVEQ.L	#0,D0
+	MOVEQ.L	#0,D1
+;destination area begin is in d0
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+;destination area end is in d1 (inclusively)
+	MOVEP.W	3(A1),D1
+	MOVE.B	2(A1),D1
+	LEA.L	4(A1),A1
+;there are incomplete atari-segments at fileend too (shouldnt happen, but
+;  what the hell)
+;so if source data end, end resorting
+.L2	CMP.L	A1,A2
+	BLS.S	.L3
+;else copy everytime one byte into destination emumem
+	MOVE.B	(A1)+,(A0,D0.L)
+;until end of segment isnt reached
+	ADDQ.W	#1,D0
+	CMP.W	D0,D1
+	BHS.S	.L2
+;end of segment: evaluate new segment
+	BRA.S	.L4
+
+.L3
+	TST.W	SNDFORMAT
+	BEQ.W	.PN_TOOLTYPES
+					;SAP, END OF HEADER IS IN R_A3
+	ST.B	AUDIOCORRECTRH
+	IFEQ	DEBUG_SAP
+	MOVE.L	dtg_ChkData(A5),A2
+	ENDC
+	IFNE	DEBUG_SAP
+	MOVE.L	#$B0000,A2
+	ENDC
+
+	LEA.L	TYPESTR(PC),A1
+	BSR.W	FINDSTR
+	TST.L	D0
+	BEQ.S	.SAPERR
+	MOVE.L	D0,A0
+	BSR.W	SKIPWHITESPACE
+	MOVE.B	(A0),D0
+	CMP.B	#'M',D0
+	BEQ.S	.SAP_M
+	CMP.B	#'B',D0
+	BEQ.S	.SAP_B
+	CMP.B	#'C',D0			;SAP-PLAY TYPE C DOESNT WORK YET
+	BEQ.W	.SAP_C
+					;SAP-FORMATS C,S,D,R NOT SUPPORTED
+
+.FAIL
+.SAPERR					;FREE MEMORY
+	MOVE.L	AREA(PC),A1
+	MOVE.L	#$10000,D0
+	MOVE.L	4.W,A6
+	JSR	_LVOFreeMem(A6)
+	MOVEQ.L	#-1,D0
+	RTS
+
+.SAP_M
+.SAP_B
+	MOVE.W	#1,SNDFORMAT
+	LEA.L	PLAYERSTR(PC),A1
+	BSR.W	FINDSTR
+	TST.L	D0
+	BEQ.S	.SAPERR
+	MOVE.L	D0,A0
+	BSR.W	SKIPWHITESPACE
+	BSR.W	CONV
+	MOVE.W	D1,PLAYROUT
+	ST	VBI
+
+	LEA.L	INITSTR(PC),A1
+	BSR.W	FINDSTR
+	TST.L	D0
+	BEQ.S	.SAPERR
+	MOVE.L	D0,A0
+	BSR.W	SKIPWHITESPACE
+	BSR.W	CONV
+	MOVE.W	D1,INITROUT
+
+.SAP_MBC
+	CLR.W	MINSONG
+	CLR.W	PLAYSONG
+	CLR.W	MAXSONG
+
+	LEA.L	SONGSSTR(PC),A1
+	BSR.W	FINDSTR
+	TST.L	D0
+	BEQ.S	.MSSK
+	MOVE.L	D0,A0
+	BSR.W	SKIPWHITESPACE
+	BSR.W	CONV
+	SUBQ.L	#1,D1
+	MOVE.W	D1,MAXSONG
+.MSSK
+
+	LEA.L	DEFSONGSTR(PC),A1
+	BSR.W	FINDSTR
+	TST.L	D0
+	BEQ.W	.DSSK
+	MOVE.L	D0,A0
+	BSR.W	SKIPWHITESPACE
+	BSR.W	CONV
+	MOVE.W	D1,PLAYSONG
+.DSSK
+	BRA.W	.FINISHLOAD
+
+.SAP_C	MOVE.W	#$3,SNDFORMAT
+	LEA.L	PLAYERSTR(PC),A1
+	BSR.W	FINDSTR
+	TST.L	D0
+	BEQ.W	.SAPERR
+	MOVE.L	D0,A0
+	BSR.W	SKIPWHITESPACE
+	BSR.W	CONV
+	ADDQ.L	#3,D1
+	MOVE.W	D1,INITROUT
+	ADDQ.L	#3,D1
+	MOVE.W	D1,PLAYROUT
+	ST	VBI
+
+	MOVE.W	#-1,MUSIC
+	LEA.L	MUSICSTR(PC),A1
+	BSR.W	FINDSTR
+	TST.L	D0
+	BEQ.W	.SAPERR
+	MOVE.L	D0,A0
+	BSR.W	SKIPWHITESPACE
+	BSR.W	CONV
+	MOVE.W	D1,MUSIC
+
+	BRA.W	.SAP_MBC
+
+.PN_TOOLTYPES
+;in $02e0(atari) is soundinitroutine
+	MOVE.W	#$02E0,D0
+	MOVE.B	1(A0,D0.W),INITROUT
+	MOVE.B	(A0,D0.W),INITROUT+1
+
+	MOVE.L	ICONBASE(PC),A4
+	MOVE.L	do_ToolTypes(A4),A4
+
+;not implemented:
+;GET AUTHOR
+;GET COMPANY
+;GET NAME
+
+;GET MAXSONG, PLAYSONG, MINSONG
+;SOURCE: MAX,PLAY,MINSONG
+;DESTINATION: PLAY,MIN,MAXSONG WORD
+	CLR.W	PLAYSONG
+	CLR.W	MINSONG
+	CLR.W	MAXSONG
+;find SONG=
+	MOVE.L	A4,A0
+	LEA.L	SONGSSTR(PC),A1
+	MOVE.L	WBBASE(PC),A6
+	JSR	_LVOFindToolType(A6)
+	TST.L	D0
+	BEQ.S	.S1
+;get max, play, minsong from icon
+	MOVE.L	D0,A0
+	BSR.S	CONV
+	SUBQ.B	#1,D1
+	MOVE.W	D1,MAXSONG
+	TST.B	D0
+	BEQ.S	.S1
+	BSR.S	CONV
+	SUBQ.B	#1,D1
+	MOVE.W	D1,PLAYSONG
+	TST.B	D0
+	BEQ.S	.S1
+	BSR.S	CONV
+	SUBQ.B	#1,D1
+	MOVE.W	D1,MINSONG
+
+.S1
+;get tooltype AUDIOCORRECTRH for rob hubbard-songs
+	CLR.B	AUDIOCORRECTRH
+	MOVE.L	A4,A0
+	LEA.L	AUDIOCORRECTSTR(PC),A1
+	MOVE.L	WBBASE(PC),A6
+	JSR	_LVOFindToolType(A6)
+	TST.L	D0
+	BEQ.S	.S5
+	MOVE.L	D0,A0
+	LEA.L	RHSTR(PC),A1
+	MOVEQ.L	#RHSTREND-RHSTR-1,D0
+.S4	CMPM.B	(A0)+,(A1)+
+	BNE.S	.S5
+	DBF	D0,.S4
+	ST.B	AUDIOCORRECTRH
+
+.S5
+;GET CUSTOM VBI (not implemented)
+	CLR.W	VBI
+
+;GET PLAYING TIMES (not implemented)
+
+
+.FINISHLOAD
+;	MOVEQ.L	#7,D0
+;	LEA.L	AUDIOINTNODE,A1
+;	MOVE.L	$4,A6
+;	JSR	_LVOSETINTVECTOR(A6)
+;	MOVE.L	D0,AUDIOINTSTORE
+;	MOVE.L	D0,$100
+
+;	MOVE.L	$70.W,AUDIOINTSTORE
+;	MOVE.L	#INT4,$70.W
+;ALLOC AUDIOCHANNELS
+	IFEQ	DEBUG_SAP
+	MOVE.L	dtg_AudioAlloc(A5),A0
+	JSR	(A0)
+	ENDC
+	MOVEQ.L	#0,D0
+	RTS
+
+;converts hexnumber-ascii in hex, maximum: longword
+CONV	MOVEQ.L	#0,D1
+;number ends at , or NULL OR $A OR $D
+.S1	MOVE.B	(A0)+,D0
+	CMP.B	#',',D0
+	BEQ.S	.S3
+	CMP.B	#$0,D0
+	BEQ.S	.S3
+	CMP.B	#$A,D0
+	BEQ.S	.S3
+	CMP.B	#$D,D0
+	BEQ.S	.S3
+	SUB.B	#$30,D0
+	CMP.B	#$31,D0
+	BLO.S   .S4
+	SUB.W   #$27,D0
+	BRA.S   .S2
+.S4	CMP.B	#$11,D0
+	BLO.S	.S2
+	SUBQ.W	#7,D0
+.S2	LSL.L	#4,D1
+	OR.B	D0,D1
+	BRA.S	.S1
+
+.S3	RTS
+
+;FINDS THE VALUE OF A KEYWORD
+;INPUT:
+;A1-STRING TO SEARCH (KEYWORD)
+;A2-BEGIN OF STRING TO SEARCH IN
+;A3-END OF STRING TO SEARCH IN
+;RETURNS:
+;D0- RETURNCODE: 0 FAILED, ELSE ADDRESS OF VALUE OF THE STRING-KEYWORD
+FINDSTR
+	MOVE.L	A1,D0
+	MOVE.L	A2,A0
+;	BRA.S	.F3
+
+.F2
+;	ADDQ.L	#1,A0
+.F3	MOVE.L	D0,A1		;PUT BEGIN OF KEYWORD IN SCRATCHREGISTER
+
+.F1	CMP.L	A0,A3
+	BLS.S	.FAIL
+	CMPM.B	(A1)+,(A0)+
+	BNE.S	.F2
+;	ADDQ.L	#1,A0
+;	ADDQ.L	#1,A1
+	TST.B	(A1)
+	BNE.S	.F1
+				;SUCCESS	
+	MOVE.L	A0,D0
+	RTS
+
+.FAIL	MOVEQ.L	#0,D0
+	RTS
+
+
+
+;SKIPS WHITESPACE
+;A0-STRINGADDRESS
+SKIPWHITESPACE
+	BRA.S	.1
+
+.2	ADDQ.L	#1,A0
+.1	MOVE.B	(A0),D0
+	CMP.B	#$9,D0
+	BEQ.S	.2
+	CMP.B	#$20,D0
+	BEQ.S	.2
+	RTS
+
+;ends module
+THROWOUT
+;release 64k-block
+	MOVE.L	AREA(PC),A1
+	MOVE.L	#$10000,D0
+	MOVE.L	4.W,A6
+	JSR	_LVOFreeMem(A6)
+
+;RELEASE ICON STRUCTURE
+	TST.L	ICONBASE
+	BEQ.S	.SKIB
+	MOVE.L	ICONBASE(PC),A0
+	MOVE.L	WBBASE(PC),A6
+	JSR	_LVOFreeDiskObject(A6)
+	CLR.L	ICONBASE
+.SKIB
+;	MOVE.L	AUDIOINTSTORE,$70.W
+
+;	MOVE.L	AUDIOINTSTORE,A1
+;	MOVEQ.L	#7,D0
+;	MOVE.L	$4,A6
+;	JSR	_LVOSETINTVECTOR(A6)
+;deallocate audiochannels
+	IFEQ	DEBUG_SAP	
+	MOVE.L	dtg_AudioFree(A5),A0
+	JSR	(A0)
+	ENDC
+
+	MOVEQ.L	#0,D0
+	RTS
+
+SILENCEMOD
+;silence all sound channels
+	MOVE.L	#SILENCE,$DFF0A0
+	MOVE.W	#4,$DFF0A4
+	MOVE.W	#$100,$DFF0A6
+	MOVE.L	#0,$DFF0A8
+	MOVE.L	#SILENCE,$DFF0B0
+	MOVE.W	#4,$DFF0B4
+	MOVE.W	#$100,$DFF0B6
+	MOVE.L	#0,$DFF0B8
+	MOVE.L	#SILENCE,$DFF0C0
+	MOVE.W	#4,$DFF0C4
+	MOVE.W	#$100,$DFF0C6
+	MOVE.L	#0,$DFF0C8
+	MOVE.L	#SILENCE,$DFF0D0
+	MOVE.W	#4,$DFF0D4
+	MOVE.W	#$100,$DFF0D6
+	MOVE.L	#0,$DFF0D8
+	RTS
+
+INIT
+;.S	BRA.S	.S
+;due 6502-emulation switch into supervisormode (the old ccr-problem)
+	MOVE.L	4.W,A6
+	JSR	_LVOSuperState(A6)
+;rescue stack
+	MOVE.L	D0,USERSTK
+
+	MOVE.W	SNDFORMAT(PC),D0
+	CMP.W	#3,D0			;SAP TYPE C
+	BNE.S	.INITALL
+	
+	MOVE.L	AREA(PC),A4
+;put 6502-pc on soundinitroutine
+	MOVE.W	INITROUT(PC),PCSTORE
+;load 6502-a with init: $70
+	MOVEQ.L	#$70,D3
+;6502-x,y: musicaddress
+	MOVEQ.L	#0,D4
+	MOVEQ.L	#0,D5
+	MOVE.B	MUSIC+1(PC),D4
+	MOVE.B	MUSIC(PC),D5
+;execute 6502-soundinitroutine
+	BSR.W	EMU
+	TST.L	D0
+	BNE.S	.INITERR
+;put 6502-pc on soundinitroutine
+	MOVE.W	INITROUT(PC),PCSTORE
+;load 6502-a with init2:
+	MOVEQ.L	#$0,D3
+;6502-x musicnumber
+	MOVEQ.L	#0,D4
+	IFEQ	DEBUG_SAP
+	MOVE.W	dtg_SndNum(A5),D4
+	ENDC
+;clear 6502-y
+	MOVEQ.L	#0,D5
+;execute 6502-soundinitroutine
+	BSR.W	EMU
+	TST.L	D0
+	BNE.S	.INITERR
+	BRA.S	.2
+
+.INITALL
+	MOVE.L	AREA(PC),A4
+;put 6502-pc on soundinitroutine
+	MOVE.W	INITROUT(PC),PCSTORE
+	MOVEQ.L	#0,D3
+;load 6502-a with soundnumber
+	IFEQ	DEBUG_SAP
+	MOVE.W	dtg_SndNum(A5),D3
+	ENDC
+;clear 6502-x,y
+	MOVEQ.L	#0,D4
+	MOVEQ.L	#0,D5
+;execute 6502-soundinitroutine
+	BSR.W	EMU
+	TST.L	D0
+	BEQ.S	.2
+;emulation failed on sound init (illegal instruction)
+.INITERR
+;switch back into user mode
+	MOVE.L	USERSTK(PC),D0
+	MOVE.L	4.W,A6
+	JSR	_LVOUserState(A6)
+;	MOVE.W	#$820F,$DFF096
+	MOVEQ.L	#-1,D0			;RETURNCODE: FAILED
+	RTS
+
+;vbi set explicitely? (only implemented in sap)
+.2	TST.W	VBI
+	BNE.S	.1
+;no, get from $222(atari) and put in PLAYROUT
+	MOVE.B	$222(A4),PLAYROUT+1
+	MOVE.B	$223(A4),PLAYROUT
+.1
+;clear the time the subsong already played
+	CLR.L	TIMER
+;RESET CHANNELSAMPLES
+	MOVE.L	#SILENCE,D0
+	MOVE.L	D0,CH0SMPL
+	MOVE.L	D0,CH1SMPL
+	MOVE.L	D0,CH2SMPL
+	MOVE.L	D0,CH3SMPL
+	MOVEQ.L	#4,D0
+	MOVE.W	D0,CH0LEN
+	MOVE.W	D0,CH1LEN
+	MOVE.W	D0,CH2LEN
+	MOVE.W	D0,CH3LEN
+;	MOVEQ.L	#100,D0
+	
+
+;switch back into usermode
+	MOVE.L	USERSTK(PC),D0
+	MOVE.L	4.W,A6
+	JSR	_LVOUserState(A6)
+;switch on the audiochip (audio general+audio channel 0-3)
+;	MOVE.W	#$820F,$DFF096
+	MOVEQ.L	#0,D0
+
+	IFNE	DEBUG
+
+	LEA.L	$3C0000,A0		;logging soundcodes into memory
+	MOVE.L	#STORAGE,(A0)+		;on debug
+	MOVE.L	#SILENCE,(A0)+
+	LEA.L	$3C0010,A0
+	MOVE.L	A0,STORAGE
+	RTS
+
+STORAGE	DC.L	0
+	ENDC
+
+	RTS
+
+;interruptroutine
+PLAY	MOVEM.L	D1-A6,-(A7)
+;one interrupt more happened
+	ADDQ.L	#1,TIMER
+;adress of 64k-block
+	MOVE.L	AREA(PC),A4
+;increment $12,$13,$14(atari)
+	ADDQ.B	#1,$14(A4)
+	BCC.S	.3
+	ADDQ.B	#1,$13(A4)
+	BCC.S	.3
+	ADDQ.B	#1,$12(A4)
+
+.3
+;put 6502-pc on interrupt
+	MOVE.W	PLAYROUT(PC),PCSTORE
+;clear 6502-a,x,y
+	MOVEQ.L	#0,D3
+	MOVEQ.L	#0,D4
+	MOVEQ.L	#0,D5
+;execute interrupt until stack underflow or rts/rte or jmp $e45f
+	BSR.W	EMU
+	TST.L	D0
+	BEQ.S	.1
+	MOVEM.L	(A7)+,D1-A6
+	RTS
+
+.1
+;	MOVE.W	SR,-(A7)
+;	MOVE.W	#$2700,SR
+;	MOVE.W	#$780,$dff09a
+;convert 8bit soundregister in amiga format
+	BSR.W	EVAL
+;play amiga samples
+	BSR.W	SND
+
+	IFNE	DEBUG
+
+	MOVE.L	STORAGE,A0		;logging sound codes into memory
+	MOVE.L	(A5),(A0)		;on debug
+	MOVE.L	4(A5),4(A0)
+	MOVE.L	8(A5),8(A0)
+	MOVE.L	CH0SMPL,D0
+	SUB.L	#SILENCE,D0
+	MOVE.L	D0,$10(A0)
+	MOVE.L	CH1SMPL,D0
+	SUB.L	#SILENCE,D0
+	MOVE.L	D0,$14(A0)
+	MOVE.L	CH2SMPL,D0
+	SUB.L	#SILENCE,D0
+	MOVE.L	D0,$18(A0)
+	MOVE.L	CH3SMPL,D0
+	SUB.L	#SILENCE,D0
+	MOVE.L	D0,$1C(A0)
+	MOVE.B	CH0VOL+1,$C(A0)
+	MOVE.B	CH1VOL+1,$D(A0)
+	MOVE.B	CH2VOL+1,$E(A0)
+	MOVE.B	CH3VOL+1,$F(A0)
+	MOVE.W	CH0PER,$20(A0)
+	MOVE.W	CH0LEN,$22(A0)
+	MOVE.W	CH1PER,$24(A0)
+	MOVE.W	CH1LEN,$26(A0)
+	MOVE.W	CH2PER,$28(A0)
+	MOVE.W	CH2LEN,$2A(A0)
+	MOVE.W	CH3PER,$2C(A0)
+	MOVE.W	CH3LEN,$2E(A0)
+	ADD.L	#$30,A0
+	MOVE.L	A0,STORAGE
+
+	ENDC
+
+;	MOVE.W	(A7)+,SR
+	MOVEQ.L	#0,D0
+	MOVEM.L	(A7)+,D1-A6
+	RTS
+
+;adress of initroutine(atari)
+INITROUT	DC.W	0
+;adress of interruptroutine(atari)
+PLAYROUT	DC.W	0
+;module playing time counted in interrupts
+TIMER	DC.L	0
+;base 64k-block for songdata
+AREA	DC.L	0
+
+;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;transmits sound data into soundchip; if playing length of the sample 
+;  will be >15 ms it will be entered instantly, else there will be 
+;  waited for the audio int, this reduces the clicks significantly
+;  (and keeps the real bass sound eg on Draconus, Storm)
+SND
+.CHA	LEA.L	CH0SMPL(PC),A0
+	LEA.L	$DFF0A0,A1
+	moveq	#1,D2			; channel 1 DMA mask
+;something changed on channel 0?
+;it changed
+;STILL SAME SAMPLE?
+	TST.B	CH0NEWSAMPLE-CH0SMPL(A0)
+	BEQ.B	.CHA4
+	move.l	(A0),A2
+	move.l	A2,A3
+	move.w	4(A0),D4
+	swap	D4
+	move.w	4(A0),D4
+	bsr.w	NotePlay
+;only period changed
+.CHA4
+	TST.B	CH0CHANGED-CH0SMPL(A0)
+	BEQ.B	.CHB
+	MOVE.W	6(A0),6(A1)
+	CLR.B	CH0CHANGED-CH0SMPL(A0)
+; volume can be always written (useful for Volume/Balance handling)
+.CHB
+	MOVE.W	8(A0),8(A1)
+	LEA.L	CH1SMPL-CH0SMPL(A0),A0
+;hardwareaudioblock channel 1
+	LEA.L	$10(A1),A1
+	moveq	#2,D2			; channel 2 DMA mask
+	TST.B	CH1NEWSAMPLE-CH1SMPL(A0)
+	BEQ.B	.CHB4
+	move.l	(A0),A2
+	move.l	A2,A3
+	move.w	4(A0),D4
+	swap	D4
+	move.w	4(A0),D4
+	bsr.w	NotePlay
+.CHB4
+	TST.B	CH1CHANGED-CH1SMPL(A0)
+	BEQ.B	.CHC
+	MOVE.W	6(A0),6(A1)
+	CLR.B	CH1CHANGED-CH1SMPL(A0)
+.CHC
+	MOVE.W	8(A0),8(A1)
+	LEA.L	CH1SMPL-CH0SMPL(A0),A0
+	LEA.L	$10(A1),A1
+	moveq	#4,D2			; channel 3 DMA mask
+	TST.B	CH2NEWSAMPLE-CH2SMPL(A0)
+	BEQ.S	.CHC4
+	move.l	(A0),A2
+	move.l	A2,A3
+	move.w	4(A0),D4
+	swap	D4
+	move.w	4(A0),D4
+	bsr.w	NotePlay
+.CHC4
+	TST.B	CH2CHANGED-CH2SMPL(A0)
+	BEQ.B	.CHD
+	MOVE.W	6(A0),6(A1)
+	CLR.B	CH2CHANGED-CH2SMPL(A0)
+.CHD
+	MOVE.W	8(A0),8(A1)
+	LEA.L	CH1SMPL-CH0SMPL(A0),A0
+	LEA.L	$10(A1),A1
+	moveq	#8,D2			; channel 4 DMA mask
+	TST.B	CH3NEWSAMPLE-CH3SMPL(A0)
+	BEQ.S	.CHD4
+	move.l	(A0),A2
+	move.l	A2,A3
+	move.w	4(A0),D4
+	swap	D4
+	move.w	4(A0),D4
+	bsr.w	NotePlay
+.CHD4
+	TST.B	CH3CHANGED-CH3SMPL(A0)
+	BEQ.B	.ALLOW
+	MOVE.W	6(A0),6(A1)
+	CLR.B	CH3CHANGED-CH3SMPL(A0)
+.ALLOW
+	MOVE.W	8(A0),8(A1)
+	RTS
+
+NotePlay
+	lea	$dff000,A5			; load CustomBase
+
+; Note: d2 must contain the DMA mask of the channels you want to stop,
+;       and d3 the DMA mask of the channels you want to start.
+;       The vhpos, vhposr, etc. definitions can be found in the
+;       hardware/custom.i include file.
+;       BTW - this routine cannot be used if a replay uses audio-interrupts
+;       (because it uses the intreq/intreqr registers for waiting)!
+
+.StopDMA
+	move.b	vhposr(A5),d1
+.WaitLine1
+	cmp.b	vhposr(A5),d1			; sync routine to start at linestart
+	beq.s	.WaitLine1
+.WaitDMA1
+	cmp.b	#$16,vhposr+1(A5)		; wait til after Audio DMA slots
+	bcs.s	.WaitDMA1
+	moveq	#1,d0
+
+	move.w	D0,6(A1)
+
+	move.w	dmaconr(A5),d0			; get active channels
+	and.w	d2,d0
+	move.w	d0,d1
+	lsl.w	#7,d0
+	move.w	d0,intreq(A5)			; clear requests
+	move.w	d1,dmacon(A5)			; stop channels
+.WaitStop
+	move.w	intreqr(A5),d1			; wait until all channels are stopped
+	and.w	d0,d1
+	cmp.w	d0,d1
+	bne.s	.WaitStop
+.Skip
+
+; Here you must set the oneshot-parts of the samples you stopped before
+
+	move.l	A2,(A1)
+	move.w	D4,4(A1)
+	swap	D4
+
+; Because of the period = 1 trick used above, you must _always_ set the period
+; of the stopped channels here, otherwise the output will sound wrong
+; If you want to mute a channel, you can either turn it off, but not on again
+; (by setting the channel's DMA bit in the d2 register, and clearing the channel's
+; DMA bit in the d3 register), or you have to play a oneshot-nullsample and
+; a loop-nullsample (smiliar to ProTracker)
+
+	move.w	6(A0),6(A1)			; period
+	move.w	8(A0),8(A1)			; volume
+
+	move.b	vhposr(A5),d1
+.WaitLine2
+	cmp.b	vhposr(A5),d1			; sync routine to start at linestart
+	beq.s	.WaitLine2
+.WaitDMA2
+	cmp.b	#$16,vhposr+1(A5)		; wait til after Audio DMA slots
+	bcs.s	.WaitDMA2
+.StartDMA
+	move.w	dmaconr(A5),d0			; get active channels
+	not.w	d0
+
+	and.w	D2,D0
+
+	move.w	d0,d1
+	or.w	#$8000,d1
+	lsl.w	#7,d0
+	move.w	d0,intreq(A5)			; clear requests
+	move.w	d1,dmacon(A5)			; start channels
+.WaitStart
+	move.w	intreqr(A5),d1			; wait until all channels are running
+	and.w	d0,d1
+	cmp.w	d0,d1
+	bne.s	.WaitStart
+
+	move.b	vhposr(A5),d1
+.WaitLine3
+	cmp.b	vhposr(A5),d1			; sync routine to start at linestart
+	beq.s	.WaitLine3
+.WaitDMA3
+	cmp.b	#$16,vhposr+1(A5)		; wait til after Audio DMA slots
+	bcs.s	.WaitDMA3
+
+; Here you must set the loop-parts of the samples. If a sample doesn't have
+; a loop, then you have to play a nullsample of length 1 (similiar to ProTracker).
+
+	move.l	A3,(A1)
+	move.w	D4,4(A1)
+.Done
+	rts
+
+;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;here sound evaluation from 8-bit to amiga
+
+EVAL	MOVE.L	AREA(PC),A5
+	MOVE.L	#$D200,D0
+;in a5 begin pokeychip $d200(atari)
+	LEA.L	0(A5,D0.L),A5
+;in a4 channeladress
+	MOVE.L	A5,A4
+
+.CHA	MOVEQ.L	#0,D7
+	MOVE.B	8(A5),D0
+;test for 15 khz base frequency
+	BTST	#0,D0
+	BEQ.S	.CHA1
+	MOVE.B	#$0,D7
+	BRA.S	.CHA2
+
+;32 khz base frequency
+.CHA1	MOVE.B	#$08,D7
+;test for 1.7 mhz base frequency
+.CHA2	BTST	#6,D0
+	BEQ.S	.CHA3
+;test for joined channel
+	BTST	#4,D0
+	BNE.S	.CHA4
+;channel alone in 1.79 mhz
+	MOVE.B	#$18,D7
+	BRA.S	.CHA3
+
+;channel joined - 1.73 mhz
+.CHA4	MOVE.B	#$10,D7
+;test for 9bit-poly counter
+.CHA3	BTST	#7,D0
+	BEQ.S	.CHA5
+;9-bit poly counter instead of 17 bit
+	OR.B	#20,D7
+;channel 1 and 2 mixed?
+.CHA5	BTST	#2,D0
+	BEQ.S	.CHA6
+;yes...
+	OR.B	#1,D7
+.CHA6
+	BSR.W	EVALCH
+	LEA.L	CH0SMPL(PC),A3
+	BSR.W	SOUNDCHANGETEST
+;	MOVE.L	D0,CH0SMPL
+;	MOVE.W	D1,CH0LEN
+;	MOVE.W	D2,CH0PER
+;	MOVE.B	D3,CH0INT
+;	MOVE.W	D6,CH0VOL
+;	MOVE.B	D5,CH0CHANGED
+	LEA.L	2(A4),A4
+.CHAEND
+
+.CHB	MOVEQ.L	#0,D7
+	MOVE.B	8(A5),D0
+;test for 15 khz base frequency
+	BTST	#0,D0
+	BEQ.S	.CHB1
+;15 khz base frequency
+	MOVE.B	#$0,D7
+	BRA.S	.CHB2
+
+;32 khz base frequency
+.CHB1	MOVE.B	#$08,D7
+;test for 1.7 mhz base frequency (?????????)
+.CHB2	BTST	#6,D0
+	BEQ.S	.CHB4
+	MOVE.B	#$10,D7
+;test for joined channel
+.CHB4	BTST	#4,D0
+	BEQ.S	.CHB3
+	OR.B	#4,D7
+;test for 9-bit poly counter
+.CHB3	BTST	#7,D0
+	BEQ.S	.CHB5
+	OR.B	#20,D7
+;channel  1 and 2 mixed?
+.CHB5	BTST	#2,D0
+	BEQ.S	.CHB6
+	OR.B	#2,D7
+.CHB6
+	BSR.W	EVALCH
+	LEA.L	CH1SMPL(PC),A3
+	BSR.W	SOUNDCHANGETEST
+	LEA.L	2(A4),A4
+.CHBEND
+
+
+;channel c and d like a and b
+.CHC	MOVEQ.L	#0,D7
+	MOVE.B	8(A5),D0
+	BTST	#0,D0
+	BEQ.S	.CHC1
+	MOVE.B	#$0,D7
+	BRA.S	.CHC2
+
+.CHC1	MOVE.B	#$08,D7
+.CHC2	BTST	#5,D0
+	BEQ.S	.CHC3
+	BTST	#3,D0
+	BNE.S	.CHC4
+	MOVE.B	#$18,D7
+	BRA.S	.CHC3
+
+.CHC4	MOVE.B	#$10,D7
+.CHC3	BTST	#7,D0
+	BEQ.S	.CHC5
+	OR.B	#20,D7
+.CHC5	BTST	#2,D0
+	BEQ.S	.CHC6
+	OR.B	#1,D7
+.CHC6
+	BSR.W	EVALCH
+	LEA.L	CH2SMPL(PC),A3
+	BSR.W	SOUNDCHANGETEST
+	LEA.L	2(A4),A4
+.CHCEND
+
+.CHD	MOVEQ.L	#0,D7
+	MOVE.B	8(A5),D0
+	BTST	#0,D0
+	BEQ.S	.CHD1
+	MOVE.B	#$0,D7
+	BRA.S	.CHD2
+
+.CHD1	MOVE.B	#$08,D7
+.CHD2	BTST	#5,D0
+	BEQ.S	.CHD4
+	MOVE.B	#$10,D7
+.CHD4	BTST	#3,D0
+	BEQ.S	.CHD3
+	OR.B	#$4,D7
+
+.CHD3	BTST	#7,D0
+	BEQ.S	.CHD5
+	OR.B	#20,D7
+.CHD5	BTST	#1,D0
+	BEQ.S	.CHD6
+	OR.B	#2,D7
+.CHD6
+	BSR.W	EVALCH
+	LEA.L	CH3SMPL(PC),A3
+	BSR.S	SOUNDCHANGETEST
+.CHDEND
+
+	MOVE.B	8(A5),SPECIALSTORE
+	RTS
+
+SOUNDCHANGETEST
+;A3 IS POINTER ON CHxSMPL
+;D3 TRUE, IF THE SAMPLE CAN BE PLAYED ONE TIME IN 0.018 SEC
+;.2	TST.W	D6
+;	BNE.S	.1
+;	MOVE.L	#SILENCE,D0
+;	MOVE.L	#4,D1
+;	MOVE.L	#$100,D2
+.1
+	CMP.L	(A3),D0
+	BNE.S	.11
+	SF.B	CH0NEWSAMPLE-CH0SMPL(A3)
+	BRA.S	.12
+
+.11	ST.B	CH0NEWSAMPLE-CH0SMPL(A3)
+	ST.B	CH0CHANGED-CH0SMPL(A3)
+	MOVE.L	D0,(A3)
+	MOVE.W	D1,CH0LEN-CH0SMPL(A3)
+.12
+	CMP.W	CH0PER-CH0SMPL(A3),D2
+	BEQ.S	.13
+	MOVE.W	D2,CH0PER-CH0SMPL(A3)
+	ST.B	CH0CHANGED-CH0SMPL(A3)
+.13
+	MOVE.W	D6,CH0VOL-CH0SMPL(A3)
+	RTS
+
+;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+EVALCH
+;A4 GIVES CHANNEL ADRESS
+;	OFFSET 0 IS AUDFx
+;	OFFSET 1 IS AUDCx
+;D7 GIVES SPECIALBITS
+;	#5 - 9-BIT-POLY COUNTER
+;	#4,#3	CHANNEL "FREQUENCY"
+;		0,0 - 15 KHZ
+;		0,1 - 32 KHZ
+;		1,0 - 1.73 MHZ (2 JOINED)
+;		1,1 - 1.79 MHZ
+;	#2 - CHANNEL IS JOINED
+;	#1 - CHANNEL IS MODULATOR 
+;	#0 - CHANNEL IS BEING MODULATED
+;	     (NOTE 28.8.2000: EVENTUALLY, MODULATION WORKS AS FOLLOWING:
+;		IMAGINE A WAVEFORM WILL BE PLAYED ON BOTH CHANNELS. NOW
+;		IF BOTH CHANNELS HAVE POSITIVE OR BOTH NEGATIVE VALUE,
+;		THE RESULTING OUTPUT WILL BE POSITIVE, IF ONE 'PLAYS'
+;		POSITIVE AND ONE NEGATIVE VALUE, THE OUTPUT IS NEGATIVE)
+;INTERNAL:
+;D2 WILL BE (AUDFx+1) TIMES $100, REFERRED ON THE VALUE WHICH AUDFx AT
+;	31960 HZ BASE FREQUENCY WOULD NEED TO HAVE, MAY ASSUME 
+;	VALUES UP TO $7FFFF
+;D6 WILL BE VOLUME
+;
+;RETURNED VALUES:
+;D0 SAMPLE ADRESS
+;D1 SAMPLE LENGTH
+;D2 PERIOD
+;D5 TRUE: CHANNEL CHANGED
+;D6 VOLUME
+;
+;INTERNAL: (AB)USES $D240-$D279(atari) for sound checks, that shouldnt
+;		cause problems with correctly programmed sounds
+
+
+;volume-only active?
+	BTST	#4,1(A4)
+	BNE.S	.SILENCE
+;determine waveform (bit 5-7) on base of the poly counter
+	MOVEQ.L	#0,D0
+	MOVE.B	1(A4),D0
+	MOVE.L	D0,D6
+	AND.L	#$F,D6
+	LSR.B	#5,D0
+	LSL.B	#2,D0
+	JMP	.TAB(PC,D0.W)
+.SILENCE	
+	MOVEQ.L	#0,D6
+	MOVE.L	#SILENCE,D0
+	MOVE.L	#4,D1
+	MOVE.L	#$100,D2
+	ST	D3
+	RTS
+
+.TAB	BRA.W	POLY0517
+	BRA.W	POLY05
+	BRA.W	POLY0405
+	BRA.W	POLY05
+	BRA.W	POLY17
+	BRA.W	NOPOLY
+	BRA.W	POLY04
+	BRA.W	NOPOLY
+
+POLY0517	
+	MOVEQ.L	#0,D3
+;test for joined channel
+	BTST	#2,D7
+	BEQ.S	.PA1
+;if joined, put AUDF of previous channel in bit 8-15,
+;  AUDF of this channel in bit 16-23, rest of the bits are 0
+	MOVEP.W	-2(A4),D3
+	CLR.B	D3
+	SWAP	D3
+	MOVE.B	(A4),D3
+	SWAP	D3
+	BRA.S	.PA2
+
+;normally AUDF in bit 8-15, rest of the bits are 0
+.PA1	MOVEP.W	0(A4),D3
+	CLR.B	D3
+
+;test for channel frequency
+.PA2	MOVE.B	D7,D1
+	AND.W	#$18,D1
+	LSR.B	#1,D1
+	JMP	.TABF(PC,D1.W)
+.TABF	BRA.W	.15KHZ
+	BRA.W	.32KHZ
+	BRA.W	.1730KHZ
+	BRA.W	.1790KHZ
+
+;conversion of channel "frequency" to normperiod, result is in d2
+;for 15 khz multiply with 114, then add 114*$100 and divide by 28
+.15KHZ	MOVEQ.L	#114,D4
+	BSR.W	MULTIPLY
+	MOVE.L	D2,D3
+	ADD.L	#114*$100,D3
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+	BRA.S	.FREQE
+
+.32KHZ	ADD.L	#$100,D3
+	MOVE.L	D3,D2
+	BRA.S	.FREQE
+
+;for 1730 khz, add 7 and divide by 28
+.1730KHZ
+	ADDQ.L	#7,D3
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+	BRA.S	.FREQE
+
+;for 1790 khz, add 4 and divide by 28
+.1790KHZ
+	ADDQ.L	#4,D3
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+
+.FREQE	MOVE.L	D5,D1
+	MOVE.L	#$FF,D5
+	CMP.B	#0,$60(A4)
+	BNE.S	.F2
+	CMP.W	$40(A4),D2
+	BNE.S	.F2
+	MOVE.B	8(A5),D0
+	CMP.B	SPECIALSTORE(PC),D0
+	BNE.S	.F3
+	CMP.W	$50(A4),D6
+	BNE.S	.F3
+	MOVEQ.L	#0,D5
+	BRA.S	.F3
+
+;for 'strange' waveforms, which play with some probability at the change
+;  one sound and sometimes another, mark the change
+.F2	OR.L	#$FF0000,D5
+.F3	MOVE.W	D2,$40(A4)
+	MOVE.W	D6,$50(A4)
+	MOVE.B	#0,$60(A4)
+
+;9-bit-poly-counter?
+	BTST.L	#5,D7
+	BNE.S	.N1
+
+;17-bit-poly counter aktive
+;with period 137 the sampling was sampled on the amiga
+	MOVE.L	#137,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+;lower than ffff isnt possible (produces only crack-sounds anyway)
+	CMP.L	#$10000,D2
+	BLO.S	.S1
+	MOVE.L	#$FFFF,D2
+;lower than period 124 also isnt possible (in PAL), but maybe that should
+;  simply become silenced?!?
+.S1	CMP.L	#124,D2
+	BHS.S	.S2
+	MOVE.L	#124,D2
+.S2
+;correct the volume
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0517_0,D0
+	MOVE.W	#(POLY0517_0END-POLY0517_0)/2,D1
+	RTS
+
+;9-bit-poly counter active, means this is 0509-poly
+.N1	MOVE.L	D2,A0
+	MOVE.L	D1,A1
+	MOVE.L	A1,D3
+	MOVEQ.L	#73,D4
+	BSR.W	DIVIDE
+	MOVE.L	A0,D2
+	TST.W	D1
+	BEQ.W	.K4			;if playing value can be divided 
+					;by 73, play waveform 0509D
+
+	MOVE.L	A1,D3
+	MOVEQ.L	#31,D4
+	BSR.W	DIVIDE
+	MOVE.L	A0,D2
+	TST.W	D1
+	BEQ.W	.K3			;if playing value can be divided
+					;by 31, play waveform 0509C
+
+	MOVE.L	A1,D3
+	MOVEQ.L	#7,D4
+	BSR.W	DIVIDE
+	MOVE.L	A0,D2
+	TST.W	D1
+	BEQ.W	.K2			;if playing value can be divided
+					;by 7, play waveform 0509B
+
+.K1					;else play waveform 0517, which
+	MOVE.L	#137,D4			;sounds equally to 0509A
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#$10000,D2
+	BLO.S	.K11
+	MOVE.L	#$FFFF,D2
+.K11	CMP.L	#124,D2
+	BHS.S	.K12
+	MOVE.L	#124,D2
+.K12
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0517_0,D0
+	MOVE.W	#(POLY0517_0END-POLY0517_0)/2,D1
+	RTS
+
+.SILENCE	
+	MOVEQ.L	#0,D6
+	MOVE.L	#SILENCE,D0
+	MOVE.L	#4,D1
+	MOVE.L	#$100,D2
+	RTS
+
+;if waveform changed, then silence channel with 1/3 probability 
+.K2	MOVE.L	D5,D0
+	SWAP	D0
+	TST.B	D0
+	BEQ.S	.K2A
+	BSR.W	RANDOM
+	CMP.B	#$50,D1
+	BLO.W	.SILENCE
+.K2A
+.K2W1	CMP.L	#$280,D2
+	BHI.S	.K2W2
+	MOVE.L	#178,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.W	#124,D2
+	BHS.S	.K2W11
+	MOVE.L	#124,D2
+.K2W11	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0509B_0,D0
+	MOVE.W	#(POLY0509B_0END-POLY0509B_0)/2,D1
+	RTS
+
+.K2W2	ADD.L	D2,D2
+	MOVE.L	D2,D3
+	MOVE.L	#5,D4
+	BSR.W	DIVIDE
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#$10000,D2
+	BLO.S	.K2W21
+	MOVE.L	#$FFFF,D2
+.K2W21
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0509B_1_5,D0
+	MOVE.W	#(POLY0509B_1_5END-POLY0509B_1_5)/2,D1
+	RTS
+
+.K3
+	MOVE.L	D5,D0
+	SWAP	D0
+	TST.B	D0
+	BEQ.S	.K3A
+	BSR.W	RANDOM
+	CMP.B	#$50,D1
+	BLO.W	.SILENCE
+.K3A
+.K3W1	ADD.L	D2,D2
+	MOVE.L	D2,D3
+	MOVE.L	#5,D4
+	BSR.W	DIVIDE
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#$10000,D2
+	BLO.S	.K3W11
+	MOVE.L	#$FFFF,D2
+.K3W11	CMP.L	#124,D2
+	BHS.S	.K3W12
+	MOVE.L	#124,D2
+.K3W12
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0509C_1_5,D0
+	MOVE.W	#(POLY0509C_1_5END-POLY0509C_1_5)/2,D1
+	RTS
+
+.K4
+.K4W1	ADD.L	D2,D2
+	MOVE.L	D2,D3
+	MOVE.L	#5,D4
+	BSR.W	DIVIDE
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#$10000,D2
+	BLO.S	.K4W11
+	MOVE.L	#$FFFF,D2
+.K4W11
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0509D_1_5,D0
+	MOVE.W	#(POLY0509D_1_5END-POLY0509D_1_5)/2,D1
+	RTS
+
+POLY17	
+	MOVEQ.L	#0,D3
+	BTST	#2,D7
+	BEQ.S	.PA1
+	MOVEP.W	-2(A4),D3
+	CLR.B	D3
+	SWAP	D3
+	MOVE.B	(A4),D3
+	SWAP	D3
+	BRA.S	.PA2
+
+.PA1	MOVEP.W	0(A4),D3
+	CLR.B	D3
+.PA2	MOVE.B	D7,D1
+	AND.W	#$18,D1
+	LSR.B	#1,D1
+	JMP	.TABF(PC,D1.W)
+.TABF	BRA.W	.15KHZ
+	BRA.W	.32KHZ
+	BRA.W	.1730KHZ
+	BRA.W	.1790KHZ
+
+.15KHZ	MOVEQ.L	#114,D4
+	BSR.W	MULTIPLY
+	MOVE.L	D2,D3
+	ADD.L	#114*$100,D3
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+	BRA.S	.FREQE
+
+.32KHZ	ADD.L	#$100,D3
+	MOVE.L	D3,D2
+	BRA.S	.FREQE
+
+.1730KHZ
+	ADDQ.L	#7,D3
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+	BRA.S	.FREQE
+
+.1790KHZ
+	ADDQ.L	#4,D3
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+
+.FREQE	MOVE.L	D5,D1
+	MOVE.L	#$FF,D5
+	CMP.B	#4,$60(A4)
+	BNE.S	.F2
+	CMP.W	$40(A4),D2
+	BNE.S	.F2
+	MOVE.B	8(A5),D0
+	CMP.B	SPECIALSTORE(PC),D0
+	BNE.S	.F3
+	CMP.W	$50(A4),D6
+	BNE.S	.F3
+	MOVEQ.L	#0,D5
+	BRA.S	.F3
+
+.F2	OR.L	#$FF0000,D5
+.F3	MOVE.W	D2,$40(A4)
+	MOVE.W	D6,$50(A4)
+	MOVE.B	#4,$60(A4)
+
+	BTST.L	#5,D7
+	BNE.S	.N1
+
+	TST.B	AUDIOCORRECTRH
+	BEQ.S	.F4
+	CMP.L	#$2F0,D2
+	BHS.S	.F4
+	MOVEQ.L	#0,D6
+.F4
+
+	MOVE.L	#132,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#$10000,D2
+	BLO.S	.S1
+	MOVE.L	#$FFFF,D2
+.S1	CMP.L	#124,D2
+	BHS.S	.S2
+	MOVE.L	#124,D2
+.S2
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY17_0,D0
+	MOVE.W	#(POLY17_0END-POLY17_0)/2,D1
+	RTS
+
+.N1	MOVE.L	D2,A0
+	MOVE.L	D1,A1
+	MOVE.L	A1,D3
+	MOVEQ.L	#73,D4
+	BSR.W	DIVIDE
+	MOVE.L	A0,D2
+	TST.W	D1
+	BEQ.W	.K3
+
+	MOVE.L	A1,D3
+	MOVEQ.L	#7,D4
+	BSR.W	DIVIDE
+	MOVE.L	A0,D2
+	TST.W	D1
+	BEQ.W	.K2
+
+.K1
+	CMP.L	#$280,D2
+	BHS.S	.K1W2
+	MOVE.L	#178,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#124,D2
+	BHS.S	.K1W12
+	MOVE.L	#124,D2
+.K1W12
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY09A_0,D0
+	MOVE.W	#(POLY09A_0END-POLY09A_0)/2,D1
+	RTS
+
+.K1W2
+	ADD.L	D2,D2
+	MOVE.L	D2,D3
+	MOVE.L	#5,D4
+	BSR.W	DIVIDE
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#$10000,D2
+	BLO.S	.K1W21
+	MOVE.L	#$FFFF,D2
+.K1W21
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY09A_1_5,D0
+	MOVE.W	#(POLY09A_1_5END-POLY09A_1_5)/2,D1
+	RTS
+
+.SILENCE	
+	MOVEQ.L	#0,D6
+	MOVE.L	#SILENCE,D0
+	MOVE.L	#4,D1
+	MOVE.L	#$100,D2
+	RTS
+
+.K2	MOVE.L	D5,D0
+	SWAP	D0
+	TST.B	D0
+	BEQ.S	.K2A
+	BSR.W	RANDOM
+	CMP.B	#$50,D1
+	BLO.W	.SILENCE
+.K2A
+.K2W1	CMP.L	#$280,D2
+	BHI.S	.K2W2
+	MOVE.L	#178,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.W	#124,D2
+	BHS.S	.K2W11
+	MOVE.L	#124,D2
+.K2W11	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY09B_0,D0
+	MOVE.W	#(POLY09B_0END-POLY09B_0)/2,D1
+	RTS
+
+.K2W2	CMP.L	#$500,D2
+	BHI.S	.K2W3
+	ADD.L	D2,D2
+	MOVE.L	D2,D3
+	MOVE.L	#5,D4
+	BSR.W	DIVIDE
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY09B_1_5,D0
+	MOVE.W	#(POLY09B_1_5END-POLY09B_1_5)/2,D1
+	RTS
+
+.K2W3	MOVE.L	D2,D3
+	MOVE.L	#5,D4
+	BSR.W	DIVIDE
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#$10000,D2
+	BLO.S	.K2W31
+	MOVE.L	#$FFFF,D2
+.K2W31
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY09B_4,D0
+	MOVE.W	#(POLY09B_4END-POLY09B_4)/2,D1
+	RTS
+
+.K3
+	MOVE.L	D5,D0
+	SWAP	D0
+	TST.B	D0
+	BEQ.S	.K3A
+	BSR.W	RANDOM
+	CMP.B	#$50,D1
+	BLO.W	.SILENCE
+.K3A
+.K3W1	CMP.L	#$500,D2
+	BHS.S	.K3W2
+	ADD.L	D2,D2
+	MOVE.L	D2,D3
+	MOVE.L	#5,D4
+	BSR.W	DIVIDE
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#124,D2
+	BHS.S	.K3W13
+	MOVE.L	#124,D2
+.K3W13
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0509C_1_5,D0
+	MOVE.W	#(POLY0509C_1_5END-POLY0509C_1_5)/2,D1
+	RTS
+
+.K3W2	MOVE.L	D2,D3
+	MOVE.L	#5,D4
+	BSR.W	DIVIDE
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#$10000,D2
+	BLO.S	.K3W21
+	MOVE.L	#$FFFF,D2
+.K3W21
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY09C_4,D0
+	MOVE.W	#(POLY09C_4END-POLY09C_4)/2,D1
+	RTS
+
+
+NOPOLY	
+	MOVEQ.L	#0,D3
+	BTST	#2,D7
+	BEQ.S	.PA1
+	MOVEP.W	-2(A4),D3
+	CLR.B	D3
+	SWAP	D3
+	MOVE.B	(A4),D3
+	SWAP	D3
+	BRA.S	.PA2
+
+.PA1	MOVEP.W	0(A4),D3
+	CLR.B	D3
+.PA2	MOVE.B	D7,D1
+	AND.W	#$18,D1
+	LSR.B	#1,D1
+	JMP	.TABF(PC,D1.W)
+.TABF	BRA.W	.15KHZ
+	BRA.W	.32KHZ
+	BRA.W	.1730KHZ
+	BRA.W	.1790KHZ
+
+.15KHZ	MOVEQ.L	#114,D4
+	BSR.W	MULTIPLY
+	MOVE.L	D2,D3
+	ADD.L	#114*$100,D3
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+	BRA.S	.FREQE
+
+.32KHZ	ADD.L	#$100,D3
+	MOVE.L	D3,D2
+	BRA.S	.FREQE
+
+.1730KHZ
+	ADDQ.L	#7,D3
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+	BRA.S	.FREQE
+
+.1790KHZ
+	ADDQ.L	#4,D3
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+
+.FREQE	MOVEQ.L	#-1,D5
+	MOVE.B	8(A5),D0
+	CMP.B	SPECIALSTORE(PC),D0
+	BNE.S	.F3
+	CMP.W	$40(A4),D2
+	BNE.S	.F3
+	CMP.W	$50(A4),D6
+	BNE.S	.F3
+	CMP.B	#5,$60(A4)
+	BNE.S	.F3
+	MOVEQ.L	#0,D5
+.F3	MOVE.W	D2,$40(A4)
+	MOVE.W	D6,$50(A4)
+	MOVE.B	#5,$60(A4)
+
+	TST.B	AUDIOCORRECTRH
+	BEQ.S	.F4
+	CMP.L	#$2F0,D2
+	BHS.S	.F4
+	MOVEQ.L	#0,D6
+.F4
+	CMP.L	#$500,D2
+	BHI.S	.W2
+	MOVE.L	#56,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#NOPOLY_1_5,D0
+	MOVE.W	#1,D1
+	RTS
+
+.W2	CMP.L	#$C00,D2
+	BHI.S	.W3
+	MOVE.L	#5,D3
+	DIVU.W	D3,D2
+	AND.L	#$FFFF,D2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#NOPOLY_4,D0
+	MOVE.W	#2,D1
+	RTS
+
+.W3	CMP.L	#$C000,D2
+	BHI.S	.W4
+	MOVE.L	#$A,D3
+	DIVU.W	D3,D2
+	AND.L	#$FFFF,D2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#NOPOLY_9,D0
+	MOVE.W	#4,D1
+	RTS
+
+.W4	ADD.L	D2,D2
+	MOVE.L	D2,D3
+	MOVE.L	#65,D4
+	BSR.W	DIVIDE
+	CMP.L	#$10000,D2
+	BLO.S	.W41
+	MOVE.L	#$FFFF,D2
+.W41	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#NOPOLY_31_5,D0
+	MOVE.W	#(NOPOLY_31_5END-NOPOLY_31_5)/2,D1
+	RTS
+
+POLY05	
+	MOVEQ.L	#0,D3
+	BTST	#2,D7
+	BEQ.S	.PA1
+	MOVEP.W	-2(A4),D3
+	CLR.B	D3
+	SWAP	D3
+	MOVE.B	(A4),D3
+	SWAP	D3
+	BRA.S	.PA2
+
+.PA1	MOVEP.W	0(A4),D3
+	CLR.B	D3
+.PA2	MOVE.B	D7,D1
+	AND.W	#$18,D1
+	LSR.B	#1,D1
+	JMP	.TABF(PC,D1.W)
+.TABF	BRA.W	.15KHZ
+	BRA.W	.32KHZ
+	BRA.W	.1730KHZ
+	BRA.W	.1790KHZ
+
+.15KHZ	MOVEQ.L	#114,D4
+	BSR.W	MULTIPLY
+	MOVE.L	D2,D3
+	ADD.L	#114*$100,D3
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+	BRA.S	.FREQE
+
+.32KHZ	ADD.L	#$100,D3
+	MOVE.L	D3,D2
+	BRA.S	.FREQE
+
+.1730KHZ
+	ADDQ.L	#7,D3
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+	BRA.S	.FREQE
+
+.1790KHZ
+	ADDQ.L	#4,D3
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+
+.FREQE	MOVEQ.L	#-1,D5
+	MOVE.B	8(A5),D0
+	CMP.B	SPECIALSTORE(PC),D0
+	BNE.S	.F3
+	CMP.W	$40(A4),D2
+	BNE.S	.F3
+	CMP.W	$50(A4),D6
+	BNE.S	.F3
+	CMP.B	#1,$60(A4)
+	BNE.S	.F3
+	MOVEQ.L	#0,D5
+.F3	MOVE.W	D2,$40(A4)
+	MOVE.W	D6,$50(A4)
+	MOVE.B	#1,$60(A4)
+
+.W1	CMP.L	#$280,D2
+	BHI.S	.W2
+	MOVE.L	#158,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.W	#124,D2
+	BHS.S	.W11
+	MOVE.L	#124,D2
+.W11	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY05_0,D0
+	MOVE.W	#(POLY05_0END-POLY05_0)/2,D1
+	RTS
+
+.W2	CMP.L	#$A00,D2
+	BHI.S	.W3
+	ADD.L	D2,D2
+	MOVE.L	#5,D3
+	DIVU.W	D3,D2
+	AND.L	#$FFFF,D2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY05_1_5,D0
+	MOVE.W	#(POLY05_1_5END-POLY05_1_5)/2,D1
+	RTS
+
+.W3	CMP.L	#$2000,D2
+	BHI.S	.W4
+	MOVE.L	#5,D3
+	DIVU.W	D3,D2
+	AND.L	#$FFFF,D2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY05_4,D0
+	MOVE.W	#(POLY05_4END-POLY05_4)/2,D1
+	RTS
+
+.W4	ADD.L	D2,D2
+	MOVE.L	D2,D3
+	MOVE.L	#13,D4
+	BSR.W	DIVIDE
+	CMP.L	#$10000,D2
+	BLO.S	.W41
+	MOVE.L	#$FFFF,D2
+.W41	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY05_6_5,D0
+	MOVE.W	#(POLY05_6_5END-POLY05_6_5)/2,D1
+	RTS
+
+POLY04	
+	MOVEQ.L	#0,D3
+	BTST	#2,D7
+	BEQ.S	.PA1
+	MOVEP.W	-2(A4),D3
+	CLR.B	D3
+	SWAP	D3
+	MOVE.B	(A4),D3
+	SWAP	D3
+	BRA.S	.PA2
+
+.PA1	MOVEP.W	0(A4),D3
+	CLR.B	D3
+.PA2	MOVE.B	D7,D1
+	AND.W	#$18,D1
+	LSR.B	#1,D1
+	JMP	.TABF(PC,D1.W)
+.TABF	BRA.W	.15KHZ
+	BRA.W	.32KHZ
+	BRA.W	.1730KHZ
+	BRA.W	.1790KHZ
+
+.15KHZ	MOVEQ.L	#114,D4
+	BSR.W	MULTIPLY
+	MOVE.L	D2,D3
+	ADD.L	#114*$100,D3
+	MOVE.L	D3,D5
+	LSR.L	#8,D5			;D5-CONVERTED TO >1800 KHZ
+					;DUE REST DIVIDER OF THE SOUNDCHIP
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+	BRA.S	.FREQE			;D2-CONVERTED TO 32 KHZ
+					;FOR FREQUENCY EVALUATION
+
+.32KHZ	ADD.L	#$100,D3
+	MOVE.L	D3,D5
+	MOVE.L	#28,D4
+	BSR.W	MULTIPLY
+	EXG.L	D2,D5
+	LSR.L	#8,D5
+	BRA.S	.FREQE
+
+.1730KHZ
+	ADD.L	#$700,D3
+	MOVE.L	D3,D5
+	LSR.L	#8,D5
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+	BRA.S	.FREQE
+
+.1790KHZ
+	ADD.L	#$400,D3
+	MOVE.L	D3,D5
+	LSR.L	#8,D5
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+
+.FREQE	MOVE.L	D5,D1
+	MOVE.L	#$FF,D5
+	CMP.B	#6,$60(A4)
+	BNE.S	.F2
+	CMP.W	$40(A4),D2
+	BNE.S	.F2
+	MOVE.B	8(A5),D0
+	CMP.B	SPECIALSTORE(PC),D0
+	BNE.S	.F3
+	CMP.W	$50(A4),D6
+	BNE.S	.F3
+	MOVEQ.L	#0,D5
+	BRA.S	.F3
+
+.F2	OR.L	#$FF0000,D5
+.F3	MOVE.W	D2,$40(A4)
+	MOVE.W	D6,$50(A4)
+	MOVE.B	#6,$60(A4)
+
+	MOVE.L	D2,A0
+	MOVE.L	D1,D3
+	MOVEQ.L	#15,D4
+	BSR.W	DIVIDE
+	MOVE.L	A0,D2
+	LSL.W	#2,D1
+	JMP	.TABK(PC,D1.W)
+
+.TABK	BRA.W	.SILENCE
+	BRA.W	.K1
+	BRA.W	.K1
+	BRA.W	.K4
+	BRA.W	.K1
+	BRA.W	.K3
+	BRA.W	.K4
+	BRA.W	.K1
+	BRA.W	.K1
+	BRA.W	.K4
+	BRA.W	.K3
+	BRA.W	.K1
+	BRA.W	.K4
+	BRA.W	.K1
+	BRA.W	.K1
+
+.K1
+.K1W1	CMP.L	#$280,D2
+	BHI.S	.K1W2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.W	#124,D2
+	BHS.S	.K1W11
+	MOVE.L	#124,D2
+.K1W11	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY04A_0,D0
+	MOVE.W	#(POLY04A_0END-POLY04A_0)/2,D1
+	RTS
+
+.K1W2	CMP.L	#$A00,D2
+	BHI.S	.K1W3
+	ADD.L	D2,D2
+	MOVE.L	#5,D3
+	DIVU.W	D3,D2
+	AND.L	#$FFFF,D2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY04A_1_5,D0
+	MOVE.W	#(POLY04A_1_5END-POLY04A_1_5)/2,D1
+	RTS
+
+.K1W3	CMP.L	#$1800,D2
+	BHI.S	.K1W4
+	MOVE.L	#5,D3
+	DIVU.W	D3,D2
+	AND.L	#$FFFF,D2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY04A_4,D0
+	MOVE.W	#(POLY04A_4END-POLY04A_4)/2,D1
+	RTS
+
+.K1W4	CMP.L	#$3800,D2
+	BHI.S	.K1W5
+	MOVE.L	#10,D3
+	DIVU.W	D3,D2
+	AND.L	#$FFFF,D2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY04A_9,D0
+	MOVE.W	#(POLY04A_9END-POLY04A_9)/2,D1
+	RTS
+
+.K1W5	MOVE.L	D2,D3
+	MOVE.L	#35,D4
+	BSR.W	DIVIDE
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#$10000,D2
+	BLO.S	.K1W51
+	MOVE.L	#$FFFF,D2
+.K1W51
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY04A_34,D0
+	MOVE.W	#(POLY04A_34END-POLY04A_34)/2,D1
+	RTS
+
+.SILENCE	
+.K2	MOVEQ.L	#0,D6
+	MOVE.L	#SILENCE,D0
+	MOVE.L	#4,D1
+	MOVE.L	#$100,D2
+	ST	D3
+	RTS
+
+.K3
+	MOVE.L	D5,D0
+	SWAP	D0
+	TST.B	D0
+	BEQ.S	.K3A
+	BSR.W	RANDOM
+	CMP.B	#$50,D1
+	BLO.S	.SILENCE
+.K3A
+;.K3W1	CMP.L	#$280,D2		;note 28.8.2000: dont know
+;	BHI.S	.K3W2			;  why its commented out
+;	MOVE.L	#140,D4
+;	MOVE.L	D2,D3
+;	BSR.W	MULTIPLY
+;	LSR.L	#8,D2
+;	CMP.W	#124,D2
+;	BHS.S	.K3W11
+;	MOVE.L	#124,D2
+;.K3W11	MULU.W	#$445,D6
+;	LSR.W	#8,D6
+;	MOVE.L	#POLY04C_0,D0
+;	MOVE.W	#(POLY04C_0END-POLY04C_0)/2,D1
+;	RTS
+
+.K3W2	CMP.L	#$A00,D2
+	BHI.S	.K3W3
+	ADD.L	D2,D2
+	MOVE.L	#5,D3
+	DIVU.W	D3,D2
+	AND.L	#$FFFF,D2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.W	#124,D2
+	BHS.S	.K3W21
+	MOVE.L	#124,D2
+.K3W21
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY04C_1_5,D0
+	MOVE.W	#(POLY04C_1_5END-POLY04C_1_5)/2,D1
+	RTS
+
+.K3W3	CMP.L	#$2000,D2
+	BHI.S	.K3W4
+	MOVE.L	#5,D3
+	DIVU.W	D3,D2
+	AND.L	#$FFFF,D2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY04C_4,D0
+	MOVE.W	#(POLY04C_4END-POLY04C_4)/2,D1
+	RTS
+
+.K3W4	MOVE.L	D2,D3
+	MOVE.L	#10,D4
+	BSR.W	DIVIDE
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#$10000,D2
+	BLO.S	.K3W41
+	MOVE.L	#$FFFF,D2
+.K3W41
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY04C_9,D0
+	MOVE.W	#(POLY04C_9END-POLY04C_9)/2,D1
+	RTS
+
+.K4
+;.K4W1	CMP.L	#$280,D2
+;	BHI.S	.K4W2
+;	MOVE.L	#140,D4
+;	MOVE.L	D2,D3
+;	BSR.W	MULTIPLY
+;	LSR.L	#8,D2
+;	CMP.W	#124,D2
+;	BHS.S	.K4W11
+;	MOVE.L	#124,D2
+;.K4W11	MULU.W	#$445,D6
+;	LSR.W	#8,D6
+;	MOVE.L	#POLY04D_0,D0
+;	MOVE.W	#(POLY04D_0END-POLY04D_0)/2,D1
+;	RTS
+
+.K4W2	CMP.L	#$A00,D2
+	BHI.S	.K4W3
+	ADD.L	D2,D2
+	MOVE.L	#5,D3
+	DIVU.W	D3,D2
+	AND.L	#$FFFF,D2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.W	#124,D2
+	BHS.S	.K4W21
+	MOVE.L	#124,D2
+.K4W21
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY04D_1_5,D0
+	MOVE.W	#(POLY04D_1_5END-POLY04D_1_5)/2,D1
+	RTS
+
+.K4W3	CMP.L	#$2000,D2
+	BHI.S	.K4W4
+	MOVE.L	#5,D3
+	DIVU.W	D3,D2
+	AND.L	#$FFFF,D2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY04D_4,D0
+	MOVE.W	#(POLY04D_4END-POLY04D_4)/2,D1
+	RTS
+
+.K4W4	MOVE.L	D2,D3
+	MOVE.L	#10,D4
+	BSR.W	DIVIDE
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#$10000,D2
+	BLO.S	.K4W41
+	MOVE.L	#$FFFF,D2
+.K4W41
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY04D_9,D0
+	MOVE.W	#(POLY04D_9END-POLY04D_9)/2,D1
+	RTS
+
+POLY0405	
+	MOVEQ.L	#0,D3
+	BTST	#2,D7
+	BEQ.S	.PA1
+	MOVEP.W	-2(A4),D3
+	CLR.B	D3
+	SWAP	D3
+	MOVE.B	(A4),D3
+	SWAP	D3
+	BRA.S	.PA2
+
+.PA1	MOVEP.W	0(A4),D3
+	CLR.B	D3
+.PA2	MOVE.B	D7,D1
+	AND.W	#$18,D1
+	LSR.B	#1,D1
+	JMP	.TABF(PC,D1.W)
+.TABF	BRA.W	.15KHZ
+	BRA.W	.32KHZ
+	BRA.W	.1730KHZ
+	BRA.W	.1790KHZ
+
+.15KHZ	MOVEQ.L	#114,D4
+	BSR.W	MULTIPLY
+	MOVE.L	D2,D3
+	ADD.L	#114*$100,D3
+	MOVE.L	D3,D5
+	LSR.L	#8,D5
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+	BRA.S	.FREQE
+
+.32KHZ	ADD.L	#$100,D3
+	MOVE.L	D3,D5
+	MOVE.L	#28,D4
+	BSR.W	MULTIPLY
+	EXG.L	D2,D5
+	LSR.L	#8,D5
+	BRA.S	.FREQE
+
+.1730KHZ
+	ADD.L	#$700,D3
+	MOVE.L	D3,D5
+	LSR.L	#8,D5
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+	BRA.S	.FREQE
+
+.1790KHZ
+	ADD.L	#$400,D3
+	MOVE.L	D3,D5
+	LSR.L	#8,D5
+	MOVEQ.L	#28,D4
+	BSR.W	DIVIDE
+
+.FREQE	MOVE.L	D5,D1
+	MOVE.L	#$FF,D5
+	CMP.B	#2,$60(A4)
+	BNE.S	.F2
+	CMP.W	$40(A4),D2
+	BNE.S	.F2
+	MOVE.B	8(A5),D0
+	CMP.B	SPECIALSTORE(PC),D0
+	BNE.S	.F3
+	CMP.W	$50(A4),D6
+	BNE.S	.F3
+	MOVEQ.L	#0,D5
+	BRA.S	.F3
+
+.F2	OR.L	#$FF0000,D5
+.F3	MOVE.W	D2,$40(A4)
+	MOVE.W	D6,$50(A4)
+	MOVE.B	#2,$60(A4)
+
+
+	MOVE.L	D2,A0			;CONTAINS CONVERTED FREQUENCY
+	MOVE.L	D1,A1			;FOR REST DIVIDER
+	MOVE.L	A1,D3
+	MOVEQ.L	#31,D4
+	BSR.W	DIVIDE
+	MOVE.L	A0,D2
+	TST.W	D1
+	BEQ.W	.K5
+	MOVE.L	A1,D3
+	MOVEQ.L	#15,D4
+	BSR.W	DIVIDE
+	MOVE.L	A0,D2
+	LSL.W	#2,D1
+	JMP	.TABK(PC,D1.W)
+
+.TABK	BRA.W	.SILENCE
+	BRA.W	.K1
+	BRA.W	.K1
+	BRA.W	.K4
+	BRA.W	.K1
+	BRA.W	.K3
+	BRA.W	.K4
+	BRA.W	.K1
+	BRA.W	.K1
+	BRA.W	.K4
+	BRA.W	.K3
+	BRA.W	.K1
+	BRA.W	.K4
+	BRA.W	.K1
+	BRA.W	.K1
+
+.K1
+.K1W1	CMP.L	#$280,D2
+	BHI.S	.K1W2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.W	#124,D2
+	BHS.S	.K1W11
+	MOVE.L	#124,D2
+.K1W11	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0405A_0,D0
+	MOVE.W	#(POLY0405A_0END-POLY0405A_0)/2,D1
+	RTS
+
+.K1W2	CMP.L	#$A00,D2
+	BHI.S	.K1W3
+	ADD.L	D2,D2
+	MOVE.L	#5,D3
+	DIVU.W	D3,D2
+	AND.L	#$FFFF,D2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0405A_1_5,D0
+	MOVE.W	#(POLY0405A_1_5END-POLY0405A_1_5)/2,D1
+	RTS
+
+.K1W3	MOVE.L	D2,D3
+	MOVE.L	#5,D4
+	BSR.W	DIVIDE
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#$10000,D2
+	BLO.S	.K1W31
+	MOVE.L	#$FFFF,D2
+.K1W31
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0405A_4,D0
+	MOVE.W	#(POLY0405A_4END-POLY0405A_4)/2,D1
+	RTS
+
+.SILENCE	
+.K2	MOVEQ.L	#0,D6
+	MOVE.L	#SILENCE,D0
+	MOVE.L	#4,D1
+	MOVE.L	#$100,D2
+	RTS
+
+.K3
+	MOVE.L	D5,D0
+	SWAP	D0
+	TST.B	D0
+	BEQ.S	.K3A
+	BSR.W	RANDOM
+	CMP.B	#$50,D1
+	BLO.S	.SILENCE
+.K3A
+;.K3W1	CMP.L	#$280,D2
+;	BHI.S	.K3W2
+;	MOVE.L	#140,D4
+;	MOVE.L	D2,D3
+;	BSR.W	MULTIPLY
+;	LSR.L	#8,D2
+;	CMP.W	#124,D2
+;	BHS.S	.K3W11
+;	MOVE.L	#124,D2
+;.K3W11	MULU.W	#$445,D6
+;	LSR.W	#8,D6
+;	MOVE.L	#POLY04C_0,D0
+;	MOVE.W	#(POLY04C_0END-POLY04C_0)/2,D1
+;	RTS
+
+.K3W2	CMP.L	#$A00,D2
+	BHI.S	.K3W3
+	ADD.L	D2,D2
+	MOVE.L	#5,D3
+	DIVU.W	D3,D2
+	AND.L	#$FFFF,D2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.W	#124,D2
+	BHS.S	.K3W21
+	MOVE.L	#124,D2
+.K3W21
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0405C_1_5,D0
+	MOVE.W	#(POLY0405C_1_5END-POLY0405C_1_5)/2,D1
+	RTS
+
+.K3W3	CMP.L	#$2000,D2
+	BHI.S	.K3W4
+	MOVE.L	#5,D3
+	DIVU.W	D3,D2
+	AND.L	#$FFFF,D2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0405C_4,D0
+	MOVE.W	#(POLY0405C_4END-POLY0405C_4)/2,D1
+	RTS
+
+.K3W4	MOVE.L	D2,D3
+	MOVE.L	#10,D4
+	BSR.W	DIVIDE
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#$10000,D2
+	BLO.S	.K3W41
+	MOVE.L	#$FFFF,D2
+.K3W41
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0405C_9,D0
+	MOVE.W	#(POLY0405C_9END-POLY0405C_9)/2,D1
+	RTS
+
+.K4
+.K4W1	CMP.L	#$280,D2
+	BHI.S	.K4W2
+	MOVE.L	D2,D3
+	MOVE.L	#5,D4
+	BSR.W	MULTIPLY
+	MOVE.L	D2,D3
+	MOVE.L	#7,D4
+	BSR.W	DIVIDE
+	MOVE.L	#144,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.W	#124,D2
+	BHS.S	.K4W11
+	MOVE.L	#124,D2
+.K4W11	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0405D_0_4,D0
+	MOVE.W	#(POLY0405D_0_4END-POLY0405D_0_4)/2,D1
+	RTS
+
+.K4W2	CMP.L	#$A00,D2
+	BHI.S	.K4W3
+	ADD.L	D2,D2
+	MOVE.L	#5,D3
+	DIVU.W	D3,D2
+	AND.L	#$FFFF,D2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.W	#124,D2
+	BHS.S	.K4W21
+	MOVE.L	#124,D2
+.K4W21
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0405D_1_5,D0
+	MOVE.W	#(POLY0405D_1_5END-POLY0405D_1_5)/2,D1
+	RTS
+
+.K4W3	MOVE.L	D2,D3
+	MOVE.L	#5,D4
+	BSR.W	DIVIDE
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#$10000,D2
+	BLO.S	.K4W31
+	MOVE.L	#$FFFF,D2
+.K4W31
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0405D_4,D0
+	MOVE.W	#(POLY0405D_4END-POLY0405D_4)/2,D1
+	RTS
+
+.K5	MOVE.L	D5,D0
+	SWAP	D0
+	TST.B	D0
+	BEQ.S	.K5A
+	BSR.W	RANDOM
+	CMP.B	#$50,D1
+	BLO.W	.SILENCE
+.K5A
+.K5W1	CMP.L	#$280,D2
+	BHI.S	.K5W2
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.W	MULTIPLY
+	LSR.L	#8,D2
+	CMP.W	#124,D2
+	BHS.S	.K5W11
+	MOVE.L	#124,D2
+.K5W11	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0405E_1_5,D0
+	MOVE.W	#(POLY0405E_1_5END-POLY0405E_1_5)/2,D1
+	RTS
+
+.K5W2	MOVE.L	D2,D3
+	MOVE.L	#10,D4
+	BSR.S	DIVIDE
+	MOVE.L	#140,D4
+	MOVE.L	D2,D3
+	BSR.S	MULTIPLY
+	LSR.L	#8,D2
+	CMP.L	#$10000,D2
+	BLO.S	.K5W21
+	MOVE.L	#$FFFF,D2
+.K5W21
+	MULU.W	#$445,D6
+	LSR.W	#8,D6
+	MOVE.L	#POLY0405E_9,D0
+	MOVE.W	#(POLY0405E_9END-POLY0405E_9)/2,D1
+	RTS
+
+;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+;DIVIDES LONGWORD/WORD IN LONGWORD
+;D3/D4 IN D2, REST IN D1
+
+DIVIDE	
+	MOVE.L	D3,D1
+	CLR.W	D1
+	SWAP	D1
+	DIVU.W	D4,D1
+	MOVE.W	D1,D2
+	SWAP	D2
+	MOVE.W	D3,D1
+	DIVU.W	D4,D1
+	MOVE.W	D1,D2
+	CLR.W	D1
+	SWAP	D1
+	MOVEQ.L	#0,D0
+	RTS
+
+
+;MULTIPLIES LONGWORD*WORD IN LONGWORD
+;D3*D4 IN D2
+
+MULTIPLY
+	MOVE.L	D3,D1
+	CLR.W	D1
+	SWAP	D1
+	MULU.W	D4,D1
+	CMP.L	#$10000,D1
+	BHS.S	.ERR
+	SWAP	D1
+	MOVEQ.L	#0,D2
+	MOVE.W	D3,D2
+	MULU.W	D4,D2
+	ADD.L	D1,D2
+	BCS.S	.ERR
+	MOVEQ.L	#0,D0
+	RTS
+
+.ERR	MOVEQ.L	#0,D2
+	MOVEQ.L	#-1,D0
+	RTS
+
+;CH0STORE	DC.W	0
+;CH1STORE	DC.W	0
+;CH2STORE	DC.W	0
+;CH3STORE	DC.W	0
+SPECIALSTORE	DC.B	0
+SPCHANGED	DC.B	0
+AUDIOCORRECTRH	DC.B	0
+	EVEN
+
+;AUDIOINTNODE
+;	DS.L	2
+;	DC.B	2,0
+;	DS.L	2
+;	DC.L	INT4
+
+SNDAREA
+CH0SMPL	DC.L	0
+CH0LEN	DC.W	0
+CH0PER	DC.W	0
+CH0VOL	DC.W	0
+;SAMPLE WHICH IS NEW CAN BE PLAYED IN 15 MS? 
+;CH0INT	DC.B	0
+;NOW PLAYING SAMPLE PLAYABLE IN 15 MS?
+;CH0INTO	DC.B	0
+CH0CHANGED	DC.B	0
+CH0NEWSAMPLE	DC.B	$FF
+
+CH1SMPL	DC.L	0
+CH1LEN	DC.W	0
+CH1PER	DC.W	0
+CH1VOL	DC.W	0
+;CH1INT	DC.B	0
+;CH1INTO	DC.B	0
+CH1CHANGED	DC.B	0
+CH1NEWSAMPLE	DC.B	$FF
+
+CH2SMPL	DC.L	0
+CH2LEN	DC.W	0
+CH2PER	DC.W	0
+CH2VOL	DC.W	0
+;CH2INT	DC.B	0
+;CH2INTO	DC.B	0
+CH2CHANGED	DC.B	0
+CH2NEWSAMPLE	DC.B	$FF
+
+CH3SMPL	DC.L	0
+CH3LEN	DC.W	0
+CH3PER	DC.W	0
+CH3VOL	DC.W	0
+;CH3INT	DC.B	0
+;CH3INTO	DC.B	0
+CH3CHANGED	DC.B	0
+CH3NEWSAMPLE	DC.B	$FF
+
+;6502-Emulation
+;Register usage:
+; a4 points on 64k-area for emulation
+; D2 IS P-STATUS V,B,D,I
+; d3 is akku
+; d4 is x
+; d5 is y
+; D6 IS CCR-COPY N,Z
+; D7 IS CCR-COPY (X,)C
+; A0 AND A1 TEMPORARY
+; A2 is s+#$101+Register_A4
+; A3 is pc+Register_A4
+
+
+EMU	MOVE.L	AREA(PC),A4
+	MOVEQ.L	#0,D0
+	MOVEQ.L	#0,D1
+	MOVEQ.L	#0,D2
+	MOVEQ.L	#0,D6
+	MOVEQ.L	#0,D7
+	MOVE.W	PCSTORE(PC),D0
+	LEA.L	0(A4,D0.L),A3
+	MOVE.W	#$D01E,D0		;PAL-COMPUTER
+	MOVE.B	#$1,0(A4,D0.L)
+	MOVE.W	#$D40F,D0		;VBI OCCURED
+	MOVE.B	#$40,0(A4,D0.L)
+
+	LEA.L	$100(A4),A0
+	MOVE.L	A0,SPMIN
+	LEA.L	$200(A4),A2
+	MOVE.L	A2,SPMAX
+	MOVEQ.L	#$20,D2
+	BRA.S	LOOPCARRY
+
+LOOPVFLAG
+	MOVE.W	SR,D7
+	BVC.S	.1
+	OR.B	#$40,D2
+	BRA.S	.2
+
+.1	AND.B	#$BF,D2
+.2	MOVE.W	D7,D6
+	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	LSL.W	#2,D0
+	JMP	INSTTAB(PC,D0.W)
+
+LOOPSUB
+	MOVE.W	SR,D7
+	BVC.S	.1
+	OR.B	#$40,D2
+	BRA.S	.2
+
+.1	AND.B	#$BF,D2
+.2	EORI.B	#$11,D7
+	MOVE.W	D7,D6
+	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	LSL.W	#2,D0
+	JMP	INSTTAB(PC,D0.W)
+
+LOOPROTA
+	MOVE.W	SR,D7
+	MOVE.B	D1,0(A4,D0.L)
+	MOVE.W	D7,D6
+	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	LSL.W	#2,D0
+	JMP	INSTTAB(PC,D0.W)
+
+LOOPCARRY	
+	MOVE.W	SR,D7
+	MOVE.W	D7,D6
+	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	LSL.W	#2,D0
+	JMP	INSTTAB(PC,D0.W)
+
+LOOPCOMP	
+	MOVE.W	SR,D7
+	EORI.B	#$11,D7
+	MOVE.W	D7,D6
+	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	LSL.W	#2,D0
+	JMP	INSTTAB(PC,D0.W)
+
+LOOPCCR	MOVE.W	SR,D6
+LOOP
+	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	LSL.W	#2,D0
+	JMP	INSTTAB(PC,D0.W)
+
+INSTTAB	BRA.W	BRK		;00
+	BRA.W	ORAINDX		;01
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ORAZP		;05
+	BRA.W	ASLZP		;06
+	BRA.W	ILLEGALINSTR
+	BRA.W	PHP		;08
+	BRA.W	ORAIMM		;09
+	BRA.W	ASL		;0A
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ORAABS		;0D
+	BRA.W	ASLABS		;0E
+	BRA.W	ILLEGALINSTR
+	BRA.W	JMBPL		;10
+	BRA.W	ORAINDY		;11
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ORAZPX		;15
+	BRA.W	ASLZPX		;16
+	BRA.W	ILLEGALINSTR
+	BRA.W	CLC		;18
+	BRA.W	ORAABSY		;19
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ORAABSX		;1D
+	BRA.W	ASLABSX		;1E
+	BRA.W	ILLEGALINSTR
+	BRA.W	JSRABS		;20
+	BRA.W	ANDINDX		;21
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	BITZP		;24
+	BRA.W	ANDZP		;25
+	BRA.W	ROLZP		;26
+	BRA.W	ILLEGALINSTR
+	BRA.W	PLP		;28
+	BRA.W	ANDIMM		;29
+	BRA.W	ROL		;2A
+	BRA.W	ILLEGALINSTR
+	BRA.W	BITABS		;2C
+	BRA.W	ANDABS		;2D
+	BRA.W	ROLABS		;2E
+	BRA.W	ILLEGALINSTR
+	BRA.W	JMBMI		;30
+	BRA.W	ANDINDY		;31
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ANDZPX		;35
+	BRA.W	ROLZPX		;36
+	BRA.W	ILLEGALINSTR
+	BRA.W	SEC		;38
+	BRA.W	ANDABSY		;39
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ANDABSX		;3D
+	BRA.W	ROLABSX		;3E
+	BRA.W	ILLEGALINSTR
+	BRA.W	RTI		;40
+	BRA.W	EORINDX		;41
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	EORZP		;45
+	BRA.W	LSRZP		;46
+	BRA.W	ILLEGALINSTR
+	BRA.W	PHA		;48
+	BRA.W	EORIMM		;49
+	BRA.W	LSR		;4A
+	BRA.W	ILLEGALINSTR
+	BRA.W	JMPABS		;4C
+	BRA.W	EORABS		;4D
+	BRA.W	LSRABS		;4E
+	BRA.W	ILLEGALINSTR
+	BRA.W	JMBVC		;50
+	BRA.W	EORINDY		;51
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	EORZPX		;55
+	BRA.W	LSRZPX		;56
+	BRA.W	ILLEGALINSTR
+	BRA.W	CLI		;58
+	BRA.W	EORABSY		;59
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	EORABSX		;5D
+	BRA.W	LSRABSX		;5E
+	BRA.W	ILLEGALINSTR
+	BRA.W	RTSC		;60
+	BRA.W	ADCINDX		;61
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ADCZP		;65
+	BRA.W	RORZP		;66
+	BRA.W	ILLEGALINSTR
+	BRA.W	PLA		;68
+	BRA.W	ADCIMM		;69
+	BRA.W	ROR		;6A
+	BRA.W	ILLEGALINSTR
+	BRA.W	JMPIND		;6C
+	BRA.W	ADCABS		;6D
+	BRA.W	RORABS		;6E
+	BRA.W	ILLEGALINSTR
+	BRA.W	JMBVS		;70
+	BRA.W	ADCINDY		;71
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ADCZPX		;75
+	BRA.W	RORZPX		;76
+	BRA.W	ILLEGALINSTR
+	BRA.W	SEI		;78
+	BRA.W	ADCABSY		;79
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ADCABSX		;7D
+	BRA.W	RORABSX		;7E
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	STAINDX		;81
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	STYZP		;84
+	BRA.W	STAZP		;85
+	BRA.W	STXZP		;86
+	BRA.W	ILLEGALINSTR
+	BRA.W	DEY		;88
+	BRA.W	ILLEGALINSTR
+	BRA.W	TXA		;8A
+	BRA.W	ILLEGALINSTR
+	BRA.W	STYABS		;8C
+	BRA.W	STAABS		;8D
+	BRA.W	STXABS		;8E
+	BRA.W	ILLEGALINSTR
+	BRA.W	JMBCC		;90
+	BRA.W	STAINDY		;91
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	STYZPX		;94
+	BRA.W	STAZPX		;95
+	BRA.W	STXZPY		;96
+	BRA.W	ILLEGALINSTR
+	BRA.W	TYA		;98
+	BRA.W	STAABSY		;99
+	BRA.W	TXS		;9A
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	STAABSX		;9D
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	LDYIMM		;A0
+	BRA.W	LDAINDX		;A1
+	BRA.W	LDXIMM		;A2
+	BRA.W	ILLEGALINSTR
+	BRA.W	LDYZP		;A4
+	BRA.W	LDAZP		;A5
+	BRA.W	LDXZP		;A6
+	BRA.W	ILLEGALINSTR
+	BRA.W	TAY		;A8
+	BRA.W	LDAIMM		;A9
+	BRA.W	TAX		;AA
+	BRA.W	ILLEGALINSTR
+	BRA.W	LDYABS		;AC
+	BRA.W	LDAABS		;AD
+	BRA.W	LDXABS		;AE
+	BRA.W	ILLEGALINSTR
+	BRA.W	JMBCS		;B0
+	BRA.W	LDAINDY		;B1
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	LDYZPX		;B4
+	BRA.W	LDAZPX		;B5
+	BRA.W	LDXZPY		;B6
+	BRA.W	ILLEGALINSTR
+	BRA.W	CLV		;B8
+	BRA.W	LDAABSY		;B9
+	BRA.W	TSX		;BA
+	BRA.W	ILLEGALINSTR
+	BRA.W	LDYABSX		;BC
+	BRA.W	LDAABSX		;BD
+	BRA.W	LDXABSY		;BE
+	BRA.W	ILLEGALINSTR
+	BRA.W	CPYIMM		;C0
+	BRA.W	CMPINDX		;C1
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	CPYZP		;C4
+	BRA.W	CMPZP		;C5
+	BRA.W	DECZP		;C6
+	BRA.W	ILLEGALINSTR
+	BRA.W	INY		;C8
+	BRA.W	CMPIMM		;C9
+	BRA.W	DEX		;CA
+	BRA.W	ILLEGALINSTR
+	BRA.W	CPYABS		;CC
+	BRA.W	CMPABS		;CD
+	BRA.W	DECABS		;CE
+	BRA.W	ILLEGALINSTR
+	BRA.W	JMBNE		;D0
+	BRA.W	CMPINDY		;D1
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	CMPZPX		;D5
+	BRA.W	DECZPX		;D6
+	BRA.W	ILLEGALINSTR
+	BRA.W	CLD		;D8
+	BRA.W	CMPABSY		;D9
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	CMPABSX		;DD
+	BRA.W	DECABSX		;DE
+	BRA.W	ILLEGALINSTR
+	BRA.W	CPXIMM		;E0
+	BRA.W	SBCINDX		;E1
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	CPXZP		;E4
+	BRA.W	SBCZP		;E5
+	BRA.W	INCZP		;E6
+	BRA.W	ILLEGALINSTR
+	BRA.W	INX		;E8
+	BRA.W	SBCIMM		;E9
+	BRA.W	NOOP		;EA
+	BRA.W	ILLEGALINSTR
+	BRA.W	CPXABS		;EC
+	BRA.W	SBCABS		;ED
+	BRA.W	INCABS		;EE
+	BRA.W	ILLEGALINSTR
+	BRA.W	JMBEQ		;F0
+	BRA.W	SBCINDY		;F1
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	SBCZPX		;F5
+	BRA.W	INCZPX		;F6
+	BRA.W	ILLEGALINSTR
+	BRA.W	SED		;F8
+	BRA.W	SBCABSY		;F9
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	ILLEGALINSTR
+	BRA.W	SBCABSX		;FD
+	BRA.W	INCABSX		;FE
+	BRA.W	ILLEGALINSTR
+
+ADCABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	MOVE.B	0(A4,D0.L),D1
+	MOVE	D7,CCR
+	ADDX.B	D1,D3
+	BRA.W	LOOPVFLAG
+
+ADCABSX	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D4,D0
+	MOVE.B	0(A4,D0.L),D1
+	MOVE	D7,CCR
+	ADDX.B	D1,D3
+	BRA.W	LOOPVFLAG
+
+ADCABSY	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D5,D0
+	MOVE.B	0(A4,D0.L),D1
+	MOVE	D7,CCR
+	ADDX.B	D1,D3
+	BRA.W	LOOPVFLAG
+
+ADCIMM	MOVE.B	(A3)+,D1
+	MOVE	D7,CCR
+	ADDX.B	D1,D3
+	BRA.W	LOOPVFLAG
+
+ADCINDX	MOVE.B	(A3)+,D1
+	ADD.B	D4,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	MOVE.B	0(A4,D0.L),D1
+	MOVE	D7,CCR
+	ADDX.B	D1,D3
+	BRA.W	LOOPVFLAG
+
+ADCINDY	MOVE.B	(A3)+,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	ADD.W	D5,D0
+	MOVE.B	0(A4,D0.L),D1
+	MOVE	D7,CCR
+	ADDX.B	D1,D3
+	BRA.W	LOOPVFLAG
+
+ADCZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	MOVE.B	0(A4,D0.L),D1
+	MOVE	D7,CCR
+	ADDX.B	D1,D3
+	BRA.W	LOOPVFLAG
+
+ADCZPX	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	MOVE.B	0(A4,D0.L),D1
+	MOVE	D7,CCR
+	ADDX.B	D1,D3
+	BRA.W	LOOPVFLAG
+
+ANDABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	AND.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+ANDABSX	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D4,D0
+	AND.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+ANDABSY	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D5,D0
+	AND.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+ANDIMM	AND.B	(A3)+,D3
+	BRA.W	LOOPCCR
+
+ANDINDX	MOVE.B	(A3)+,D1
+	ADD.B	D4,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	AND.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+ANDINDY	MOVE.B	(A3)+,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	ADD.W	D5,D0
+	AND.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+ANDZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	AND.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+ANDZPX	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	AND.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+ASL	ADD.B	D3,D3		;WHOLE CCR NEW, THERFORE NO D7 ON CCR
+	BRA.W	LOOPCARRY
+
+ASLABS	MOVEP.W	1(A3),D0	;WHOLE CCR NEW
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	MOVE.B	0(A4,D0.L),D1
+	ADD.B	D1,0(A4,D0.L)
+	BRA.W	LOOPCARRY
+
+ASLABSX	MOVEP.W	1(A3),D0	;WHOLE CCR NEW
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D4,D0
+	MOVE.B	0(A4,D0.L),D1
+	ADD.B	D1,0(A4,D0.L)
+	BRA.W	LOOPCARRY
+
+ASLZP	MOVEQ.L	#0,D0		;WHOLE CCR NEW
+	MOVE.B	(A3)+,D0
+	MOVE.B	0(A4,D0.L),D1
+	ADD.B	D1,0(A4,D0.L)
+	BRA.W	LOOPCARRY
+
+ASLZPX	MOVEQ.L	#0,D0		;WHOLE CCR NEW
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	MOVE.B	0(A4,D0.L),D1
+	ADD.B	D1,0(A4,D0.L)
+	BRA.W	LOOPCARRY
+
+BITABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	MOVE.B	0(A4,D0.L),D1
+	AND.W	#$BF,D2
+	BTST.L	#6,D1
+	BEQ.S	.1
+	OR.B	#$40,D2
+.1	TST.B	D1
+	BMI.S	.2
+	ANDI.W	#$F7,D6
+	AND.B	D3,D1
+	BEQ.S	.3
+	ANDI.W	#$FB,D6
+	BRA.W	LOOP
+
+.2	ORI.B	#$8,D6
+	AND.B	D3,D1
+	BEQ.S	.3
+	ANDI.W	#$FB,D6
+	BRA.W	LOOP
+
+.3	ORI.B	#$4,D6
+	BRA.W	LOOP
+
+BITZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	MOVE.B	0(A4,D0.L),D1
+	AND.W	#$BF,D2
+	BTST.L	#6,D1
+	BEQ.S	.1
+	OR.B	#$40,D2
+.1	TST.B	D1
+	BMI.S	.2
+	ANDI.W	#$F7,D6
+	AND.B	D3,D1
+	BEQ.S	.3
+	ANDI.W	#$FB,D6
+	BRA.W	LOOP
+
+.2	ORI.B	#$8,D6
+	AND.B	D3,D1
+	BEQ.S	.3
+	ANDI.W	#$FB,D6
+	BRA.W	LOOP
+
+.3	ORI.B	#$4,D6
+	BRA.W	LOOP
+
+BRK	ADDQ.W	#1,A3
+	BRA.W	LOOP
+
+JMBCC	MOVE.B	(A3)+,D0
+	BTST.L	#0,D7
+	BNE.W	LOOP
+	EXT.W	D0
+	ADD.W	D0,A3
+	BRA.W	LOOP
+
+JMBCS	MOVE.B	(A3)+,D0
+	BTST.L	#0,D7
+	BEQ.W	LOOP
+	EXT.W	D0
+	ADD.W	D0,A3
+	BRA.W	LOOP
+
+JMBEQ	MOVE.B	(A3)+,D0
+	BTST.L	#2,D6
+	BEQ.W	LOOP
+	EXT.W	D0
+	ADD.W	D0,A3
+	BRA.W	LOOP
+
+JMBMI	MOVE.B	(A3)+,D0
+	BTST.L	#3,D6
+	BEQ.W	LOOP
+	EXT.W	D0
+	ADD.W	D0,A3
+	BRA.W	LOOP
+
+JMBNE	MOVE.B	(A3)+,D0
+	BTST.L	#2,D6
+	BNE.W	LOOP
+	EXT.W	D0
+	ADD.W	D0,A3
+	BRA.W	LOOP
+
+JMBPL	MOVE.B	(A3)+,D0
+	BTST.L	#3,D6
+	BNE.W	LOOP
+	EXT.W	D0
+	ADD.W	D0,A3
+	BRA.W	LOOP
+
+JMBVC	MOVE.B	(A3)+,D0
+	BTST.L	#6,D2
+	BNE.W	LOOP
+	EXT.W	D0
+	ADD.W	D0,A3
+	BRA.W	LOOP
+
+JMBVS	MOVE.B	(A3)+,D0
+	BTST.L	#6,D2
+	BEQ.W	LOOP
+	EXT.W	D0
+	ADD.W	D0,A3
+	BRA.W	LOOP
+
+CLC	AND.W	#$EE,D7
+	BRA.W	LOOP
+
+CLD	AND.B	#$F7,D2
+	BRA.W	LOOP
+
+CLI	AND.B	#$FB,D2
+	BRA.W	LOOP
+
+CLV	AND.B	#$BF,D2
+	BRA.W	LOOP
+
+CMPABS	MOVEP.W	1(A3),D0	;WHOLE CCR NEW
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	CMP.W	#$D000,D0
+	BLO.S	.1
+	CMP.W	#$D800,D0
+	BHS.S	.1
+	BSR.W	READCUSTOM
+	MOVE.B	D3,D0
+	SUB.B	D1,D0
+	BRA.W	LOOPCOMP
+
+.1	MOVE.B	D3,D1
+	SUB.B	0(A4,D0.L),D1
+	BRA.W	LOOPCOMP
+
+CMPABSX	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D4,D0
+	MOVE.B	D3,D1
+	SUB.B	0(A4,D0.L),D1
+	BRA.W	LOOPCOMP
+
+CMPABSY	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D5,D0
+	MOVE.B	D3,D1
+	SUB.B	0(A4,D0.L),D1
+	BRA.W	LOOPCOMP
+
+CMPIMM	MOVE.B	D3,D1
+	SUB.B	(A3)+,D1
+	BRA.W	LOOPCOMP
+
+CMPINDX	MOVE.B	(A3)+,D1
+	ADD.B	D4,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	MOVE.B	D3,D1
+	SUB.B	0(A4,D0.L),D1
+	BRA.W	LOOPCOMP
+
+CMPINDY	MOVE.B	(A3)+,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	ADD.W	D5,D0
+	MOVE.B	D3,D1
+	SUB.B	0(A4,D0.L),D1
+	BRA.W	LOOPCOMP
+
+CMPZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	MOVE.B	D3,D1
+	SUB.B	0(A4,D0.L),D1
+	BRA.W	LOOPCOMP
+
+CMPZPX	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	MOVE.B	D3,D1
+	SUB.B	0(A4,D0.L),D1
+	BRA.W	LOOPCOMP
+
+CPXABS	MOVEP.W	1(A3),D0	;WHOLE CCR NEW
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	CMP.W	#$D000,D0
+	BLO.S	.1
+	CMP.W	#$D800,D0
+	BHS.S	.1
+	BSR.W	READCUSTOM
+	MOVE.B	D4,D0
+	SUB.B	D1,D0
+	BRA.W	LOOPCOMP
+
+.1	MOVE.B	D4,D1
+	SUB.B	0(A4,D0.L),D1
+	BRA.W	LOOPCOMP
+
+CPXIMM	MOVE.B	D4,D1
+	SUB.B	(A3)+,D1
+	BRA.W	LOOPCOMP
+
+CPXZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	MOVE.B	D4,D1
+	SUB.B	0(A4,D0.L),D1
+	BRA.W	LOOPCOMP
+
+CPYABS	MOVEP.W	1(A3),D0	;WHOLE CCR NEW
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	CMP.W	#$D000,D0
+	BLO.S	.1
+	CMP.W	#$D800,D0
+	BHS.S	.1
+	BSR.W	READCUSTOM
+	MOVE.B	D5,D0
+	SUB.B	D1,D0
+	BRA.W	LOOPCOMP
+
+.1	MOVE.B	D5,D1
+	SUB.B	0(A4,D0.L),D1
+	BRA.W	LOOPCOMP
+
+CPYIMM	MOVE.B	D5,D1
+	SUB.B	(A3)+,D1
+	BRA.W	LOOPCOMP
+
+CPYZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	MOVE.B	D5,D1
+	SUB.B	0(A4,D0.L),D1
+	BRA.W	LOOPCOMP
+
+DECABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	SUBQ.B	#1,0(A4,D0.L)
+ 	BRA.W	LOOPCCR
+
+DECABSX	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D4,D0
+	SUBQ.B	#1,0(A4,D0.L)
+ 	BRA.W	LOOPCCR
+
+DECZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	SUBQ.B	#1,0(A4,D0.L)
+ 	BRA.W	LOOPCCR
+
+DECZPX	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	SUBQ.B	#1,0(A4,D0.L)
+ 	BRA.W	LOOPCCR
+
+DEX	SUBQ.B	#1,D4
+	BRA.W	LOOPCCR
+
+DEY	SUBQ.B	#1,D5
+	BRA.W	LOOPCCR
+
+EORABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	MOVE.B	0(A4,D0.L),D1
+	EOR.B	D1,D3
+	BRA.W	LOOPCCR
+
+EORABSX	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D4,D0
+	MOVE.B	0(A4,D0.L),D1
+	EOR.B	D1,D3
+	BRA.W	LOOPCCR
+
+EORABSY	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D5,D0
+	MOVE.B	0(A4,D0.L),D1
+	EOR.B	D1,D3
+	BRA.W	LOOPCCR
+
+EORIMM	MOVE.B	(A3)+,D1
+	EOR.B	D1,D3
+	BRA.W	LOOPCCR
+
+EORINDX	MOVE.B	(A3)+,D1
+	ADD.B	D4,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	MOVE.B	0(A4,D0.L),D1
+	EOR.B	D1,D3
+	BRA.W	LOOPCCR
+
+EORINDY	MOVE.B	(A3)+,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	ADD.W	D5,D0
+	MOVE.B	0(A4,D0.L),D1
+	EOR.B	D1,D3
+	BRA.W	LOOPCCR
+
+EORZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	MOVE.B	0(A4,D0.L),D1
+	EOR.B	D1,D3
+	BRA.W	LOOPCCR
+
+EORZPX	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	MOVE.B	0(A4,D0.L),D1
+	EOR.B	D1,D3
+	BRA.W	LOOPCCR
+
+INCABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADDQ.B	#1,0(A4,D0.L)
+ 	BRA.W	LOOPCCR
+
+INCABSX	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D4,D0
+	ADDQ.B	#1,0(A4,D0.L)
+ 	BRA.W	LOOPCCR
+
+INCZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADDQ.B	#1,0(A4,D0.L)
+ 	BRA.W	LOOPCCR
+
+INCZPX	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	ADDQ.B	#1,0(A4,D0.L)
+ 	BRA.W	LOOPCCR
+
+INX	ADDQ.B	#1,D4
+	BRA.W	LOOPCCR
+
+INY	ADDQ.B	#1,D5
+	BRA.W	LOOPCCR
+
+JMPABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3),D0
+	CMP.W	#$E462,D0
+	BEQ.W	EMUEND
+	CMP.W	#$E45F,D0
+	BEQ.W	EMUEND
+	CMP.W	#$E45C,D0
+	BEQ.S	.1
+	LEA.L	0(A4,D0.L),A3
+	BRA.W	LOOP
+
+.1	CMP.B	#6,D3
+	BNE.S	.2
+	MOVE.B	D4,$223(A4)
+	MOVE.B	D5,$222(A4)
+	BRA.W	RTSC
+
+.2	CMP.B	#7,D3
+	BNE.S	.3
+	MOVE.B	D4,$225(A4)
+	MOVE.B	D5,$224(A4)
+.3	BRA.W	RTSC
+
+JMPIND	MOVEP.W	1(A3),D1	;PAY ATTENTION TO THE MASK ERROR OF 6502.
+	MOVE.B	(A3),D1		;  JMP ($xff) gets address from $xff and $x00
+	CMP.B	#$FF,D1
+	BEQ.S	.1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	MOVEQ.L	#0,D1
+	CMP.W	#$E462,D0
+	BEQ.W	EMUEND
+	CMP.W	#$E45F,D0
+	BEQ.W	EMUEND
+	LEA.L	0(A4,D0.L),A3
+	BRA.W	LOOP
+
+.1	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	-$FF(A1),D0
+	MOVE.B	(A1),D0
+	MOVEQ.L	#0,D1
+	MOVE.L	D0,A3
+	CMP.W	#$E462,D0
+	BEQ.W	EMUEND
+	CMP.W	#$E45F,D0
+	BEQ.W	EMUEND
+	LEA.L	0(A4,D0.L),A3
+	BRA.W	LOOP
+
+JSRABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	CMP.W	#$E45C,D0
+	BEQ.S	.1
+	MOVE.W	A3,D1
+	SUB.W	A4,D1
+	MOVE.B	D1,-2(A2)
+	LSR.W	#8,D1
+	MOVE.B	D1,-(A2)
+	MOVEQ.L	#0,D1
+	SUBQ.W	#1,A2
+	CMP.L	SPMIN(PC),A2
+	BLO.W	ERRORINSTACK
+	LEA.L	0(A4,D0.L),A3
+	BRA.W	LOOP
+
+.1	ADDQ.W	#1,A3
+	CMP.B	#6,D3
+	BNE.S	.2
+	MOVE.B	D4,$223(A4)
+	MOVE.B	D5,$222(A4)
+	BRA.W	LOOP
+
+.2	CMP.B	#7,D3
+	BNE.S	.3
+	MOVE.B	D4,$225(A4)
+	MOVE.B	D5,$224(A4)
+.3	BRA.W	LOOP
+
+
+LDAABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	CMP.W	#$D000,D0
+	BLO.S	.2
+	CMP.W	#$D800,D0
+	BHS.S	.2
+	BSR.W	READCUSTOM
+	MOVE.B	D1,D3
+	BRA.W	LOOPCCR
+
+.2	MOVE.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+LDAABSX	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D4,D0
+	CMP.W	#$D000,D0
+	BLO.S	.2
+	CMP.W	#$D800,D0
+	BHS.S	.2
+	BSR.W	READCUSTOM
+	MOVE.B	D1,D3
+	BRA.W	LOOPCCR
+
+.2	MOVE.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+LDAABSY	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D5,D0
+	CMP.W	#$D000,D0
+	BLO.S	.2
+	CMP.W	#$D800,D0
+	BHS.S	.2
+	BSR.W	READCUSTOM
+	MOVE.B	D1,D3
+	BRA.W	LOOPCCR
+
+.2	MOVE.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+LDAIMM	MOVE.B	(A3)+,D3
+	BRA.W	LOOPCCR
+
+LDAINDX	MOVE.B	(A3)+,D1
+	ADD.B	D4,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	CMP.W	#$D000,D0
+	BLO.S	.2
+	CMP.W	#$D800,D0
+	BHS.S	.2
+	BSR.W	READCUSTOM
+	MOVE.B	D1,D3
+	BRA.W	LOOPCCR
+
+.2	MOVE.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+LDAINDY	MOVE.B	(A3)+,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	ADD.W	D5,D0
+	CMP.W	#$D000,D0
+	BLO.S	.2
+	CMP.W	#$D800,D0
+	BHS.S	.2
+	BSR.W	READCUSTOM
+	MOVE.B	D1,D3
+	BRA.W	LOOPCCR
+
+.2	MOVE.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+LDAZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	MOVE.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+LDAZPX	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	MOVE.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+LDXABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	CMP.W	#$D000,D0
+	BLO.S	.2
+	CMP.W	#$D800,D0
+	BHS.S	.2
+	BSR.W	READCUSTOM
+	MOVE.B	D1,D4
+	BRA.W	LOOPCCR
+
+.2	MOVE.B	0(A4,D0.L),D4
+	BRA.W	LOOPCCR
+
+LDXABSY	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D5,D0
+	CMP.W	#$D000,D0
+	BLO.S	.2
+	CMP.W	#$D800,D0
+	BHS.S	.2
+	BSR.W	READCUSTOM
+	MOVE.B	D1,D4
+	BRA.W	LOOPCCR
+
+.2	MOVE.B	0(A4,D0.L),D4
+	BRA.W	LOOPCCR
+
+LDXIMM	MOVE.B	(A3)+,D4
+	BRA.W	LOOPCCR
+
+LDXZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	MOVE.B	0(A4,D0.L),D4
+	BRA.W	LOOPCCR
+
+LDXZPY	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D5,D0
+	MOVE.B	0(A4,D0.L),D4
+	BRA.W	LOOPCCR
+
+LDYABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	CMP.W	#$D000,D0
+	BLO.S	.2
+	CMP.W	#$D800,D0
+	BHS.S	.2
+	BSR.W	READCUSTOM
+	MOVE.B	D1,D5
+	BRA.W	LOOPCCR
+
+.2	MOVE.B	0(A4,D0.L),D5
+	BRA.W	LOOPCCR
+
+LDYABSX	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D4,D0
+	CMP.W	#$D000,D0
+	BLO.S	.2
+	CMP.W	#$D800,D0
+	BHS.S	.2
+	BSR.W	READCUSTOM
+	MOVE.B	D1,D5
+	BRA.W	LOOPCCR
+
+.2	MOVE.B	0(A4,D0.L),D5
+	BRA.W	LOOPCCR
+
+LDYIMM	MOVE.B	(A3)+,D5
+	BRA.W	LOOPCCR
+
+LDYZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	MOVE.B	0(A4,D0.L),D5
+	BRA.W	LOOPCCR
+
+LDYZPX	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	MOVE.B	0(A4,D0.L),D5
+	BRA.W	LOOPCCR
+
+LSR	LSR.B	#1,D3		;WHOLE CCR NEW, THEREFORE NO D7 ON CCR
+	BRA.W	LOOPCARRY
+
+LSRABS	MOVEP.W	1(A3),D0	;WHOLE CCR NEW
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	MOVE.B	0(A4,D0.L),D1
+	LSR.B	#1,D1
+	BRA.W	LOOPROTA
+
+LSRABSX	MOVEP.W	1(A3),D0	;WHOLE CCR NEW
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D4,D0
+	MOVE.B	0(A4,D0.L),D1
+	LSR.B	#1,D1
+	BRA.W	LOOPROTA
+
+LSRZP	MOVEQ.L	#0,D0		;WHOLE CCR NEW
+	MOVE.B	(A3)+,D0
+	MOVE.B	0(A4,D0.L),D1
+	LSR.B	#1,D1
+	BRA.W	LOOPROTA
+
+LSRZPX	MOVEQ.L	#0,D0		;WHOLE CCR NEW
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	MOVE.B	0(A4,D0.L),D1
+	LSR.B	#1,D1
+	BRA.W	LOOPROTA
+
+NOOP	BRA.W	LOOP
+
+ORAABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	OR.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+ORAABSX	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D4,D0
+	OR.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+ORAABSY	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D5,D0
+	OR.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+ORAIMM	OR.B	(A3)+,D3
+	BRA.W	LOOPCCR
+
+ORAINDX	MOVE.B	(A3)+,D1
+	ADD.B	D4,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	OR.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+ORAINDY	MOVE.B	(A3)+,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	ADD.W	D5,D0
+	OR.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+ORAZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	OR.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+ORAZPX	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	OR.B	0(A4,D0.L),D3
+	BRA.W	LOOPCCR
+
+PHA	MOVE.B	D3,-(A2)
+	CMP.L	SPMIN(PC),A2
+	BLO.W	ERRORINSTACK
+	BRA.W	LOOP
+
+PHP	AND.B	#$7C,D2
+	AND.W	#$E,D6
+	AND.W	#$11,D7
+	OR.W	D6,D7
+	OR.B	.TAB(PC,D7.W),D2
+	MOVE.B	D2,-(A2)
+	CMP.L	SPMIN(PC),A2
+	BLO.W	ERRORINSTACK
+	BRA.W	LOOP
+.TAB	DC.B	0,1,0,1,2,3,2,3,$80,$81,$80,$81,$82,$83,$82,$83
+	DC.B	0,1,0,1,2,3,2,3,$80,$81,$80,$81,$82,$83,$82,$83
+
+PLA	CMP.L	SPMAX(PC),A2
+	BHI.W	ERRORINSTACK
+	MOVE.B	(A2)+,D3
+	BRA.W	LOOPCCR
+
+PLP	CMP.L	SPMAX(PC),A2
+	BHI.W	ERRORINSTACK
+	MOVE.B	(A2)+,D2
+	OR.B	#$20,D2
+	MOVE.W	D2,D0
+	ROL.B	#1,D0
+	AND.W	#$7,D0
+	MOVE.B	.TAB(PC,D0.W),D7
+	MOVE.W	D7,D6
+	BRA.W	LOOP
+.TAB	DC.B	0,8,$11,$19,4,$C,$15,$1D
+
+ROL	MOVE	D7,CCR
+	ROXL.B	#1,D3
+	BRA.W	LOOPCARRY
+
+ROLABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	MOVE.B	0(A4,D0.L),D1
+	MOVE	D7,CCR
+	ROXL.B	#1,D1
+	BRA.W	LOOPROTA
+
+ROLABSX	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D4,D0
+	MOVE.B	0(A4,D0.L),D1
+	MOVE	D7,CCR
+	ROXL.B	#1,D1
+	BRA.W	LOOPROTA
+
+ROLZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	MOVE.B	0(A4,D0.L),D1
+	MOVE	D7,CCR
+	ROXL.B	#1,D1
+	BRA.W	LOOPROTA
+
+ROLZPX	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	MOVE.B	0(A4,D0.L),D1
+	MOVE	D7,CCR
+	ROXL.B	#1,D1
+	BRA.W	LOOPROTA
+
+ROR	MOVE	D7,CCR
+	ROXR.B	#1,D3
+	BRA.W	LOOPCARRY
+
+RORABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	MOVE.B	0(A4,D0.L),D1
+	MOVE	D7,CCR
+	ROXR.B	#1,D1
+	BRA.W	LOOPROTA
+
+RORABSX	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D4,D0
+	MOVE.B	0(A4,D0.L),D1
+	MOVE	D7,CCR
+	ROXR.B	#1,D1
+	BRA.W	LOOPROTA
+
+RORZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	MOVE.B	0(A4,D0.L),D1
+	MOVE	D7,CCR
+	ROXR.B	#1,D1
+	BRA.W	LOOPROTA
+
+RORZPX	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	MOVE.B	0(A4,D0.L),D1
+	MOVE	D7,CCR
+	ROXR.B	#1,D1
+	BRA.W	LOOPROTA
+
+RTI	MOVE.B	(A2)+,D2
+	OR.B	#$20,D2
+	MOVEP.W	1(A2),D0
+	MOVE.B	(A2)+,D0
+	ADDQ.W	#1,A2
+	CMP.L	SPMAX(PC),A2
+	BHI.W	EMUEND
+;	BHI.W	ERRORINSTACK
+	LEA.L	0(A4,D0.L),A3
+	MOVE.W	D2,D0
+	ROL.B	#1,D0
+	AND.W	#$7,D0
+	MOVE.B	.TAB(PC,D0.W),D7
+	MOVE.W	D7,D6
+	BRA.W	LOOP
+.TAB	DC.B	0,8,$11,$19,4,$C,$15,$1D
+
+RTSC	MOVEP.W	1(A2),D0
+	MOVE.B	(A2)+,D0
+	ADDQ.W	#1,A2
+	CMP.L	SPMAX(PC),A2
+	BHI.W	EMUEND
+;	BHI.W	ERRORINSTACK
+	LEA.L	1(A4,D0.L),A3
+	BRA.W	LOOP
+
+SBCABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	MOVE.B	0(A4,D0.L),D1
+	EORI.B	#$11,D7
+	MOVE	D7,CCR
+	SUBX.B	D1,D3
+	BRA.W	LOOPSUB
+
+SBCABSX	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D4,D0
+	MOVE.B	0(A4,D0.L),D1
+	EORI.B	#$11,D7
+	MOVE	D7,CCR
+	SUBX.B	D1,D3
+	BRA.W	LOOPSUB
+
+SBCABSY	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D5,D0
+	MOVE.B	0(A4,D0.L),D1
+	EORI.B	#$11,D7
+	MOVE	D7,CCR
+	SUBX.B	D1,D3
+	BRA.W	LOOPSUB
+
+SBCIMM	MOVE.B	(A3)+,D1
+	EORI.B	#$11,D7
+	MOVE	D7,CCR
+	SUBX.B	D1,D3
+	BRA.W	LOOPSUB
+
+SBCINDX	MOVE.B	(A3)+,D1
+	ADD.B	D4,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	MOVE.B	0(A4,D0.L),D1
+	EORI.B	#$11,D7
+	MOVE	D7,CCR
+	SUBX.B	D1,D3
+	BRA.W	LOOPSUB
+
+SBCINDY	MOVE.B	(A3)+,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	ADD.W	D5,D0
+	MOVE.B	0(A4,D0.L),D1
+	EORI.B	#$11,D7
+	MOVE	D7,CCR
+	SUBX.B	D1,D3
+	BRA.W	LOOPSUB
+
+SBCZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	MOVE.B	0(A4,D0.L),D1
+	EORI.B	#$11,D7
+	MOVE	D7,CCR
+	SUBX.B	D1,D3
+	BRA.W	LOOPSUB
+
+SBCZPX	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	MOVE.B	0(A4,D0.L),D1
+	EORI.B	#$11,D7
+	MOVE	D7,CCR
+	SUBX.B	D1,D3
+	BRA.W	LOOPSUB
+
+SEC	OR.B	#$11,D7
+	BRA.W	LOOP
+
+SED	OR.B	#$8,D2
+	BRA.W	LOOP
+
+SEI	OR.B	#$4,D2
+	BRA.W	LOOP
+
+STAABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	MOVE.B	D3,0(A4,D0.L)
+	BRA.W	LOOP
+
+STAABSX	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D4,D0
+	MOVE.B	D3,0(A4,D0.L)
+	BRA.W	LOOP
+
+STAABSY	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	ADD.W	D5,D0
+	MOVE.B	D3,0(A4,D0.L)
+	BRA.W	LOOP
+
+STAINDX	MOVE.B	(A3)+,D1
+	ADD.B	D4,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	MOVE.B	D3,0(A4,D0.L)
+	BRA.W	LOOP
+
+STAINDY	MOVE.B	(A3)+,D1
+	LEA.L	0(A4,D1.L),A1
+	MOVEP.W	1(A1),D0
+	MOVE.B	(A1),D0
+	ADD.W	D5,D0
+	MOVE.B	D3,0(A4,D0.L)
+	BRA.W	LOOP
+
+STAZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	MOVE.B	D3,0(A4,D0.L)
+	BRA.W	LOOP
+
+STAZPX	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	MOVE.B	D3,0(A4,D0.L)
+	BRA.W	LOOP
+
+STXABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	MOVE.B	D4,0(A4,D0.L)
+	BRA.W	LOOP
+
+STXZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	MOVE.B	D4,0(A4,D0.L)
+	BRA.W	LOOP
+
+STXZPY	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D5,D0
+	MOVE.B	D4,0(A4,D0.L)
+	BRA.W	LOOP
+
+STYABS	MOVEP.W	1(A3),D0
+	MOVE.B	(A3)+,D0
+	ADDQ.W	#1,A3
+	MOVE.B	D5,0(A4,D0.L)
+	BRA.W	LOOP
+
+STYZP	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	MOVE.B	D5,0(A4,D0.L)
+	BRA.W	LOOP
+
+STYZPX	MOVEQ.L	#0,D0
+	MOVE.B	(A3)+,D0
+	ADD.B	D4,D0
+	MOVE.B	D5,0(A4,D0.L)
+	BRA.W	LOOP
+
+TAX	MOVE.B	D3,D4
+	BRA.W	LOOPCCR
+
+TAY	MOVE.B	D3,D5
+	BRA.W	LOOPCCR
+
+TSX	LEA.L	-$101(A2),A0
+	SUBA.L	A4,A0
+	MOVE.W	A0,D4
+	TST.B	D4
+	BRA.W	LOOPCCR
+
+TXA	MOVE.B	D4,D3
+	BRA.W	LOOPCCR
+
+TXS	LEA.L	$101(A4),A2
+	ADDA.W	D4,A2
+	BRA.W	LOOP
+
+TYA	MOVE.B	D5,D3
+	BRA.W	LOOPCCR
+
+ILLEGALINSTR
+ERRORINSTACK
+	MOVEQ.L	#-1,D0
+	RTS
+
+EMUEND	MOVEQ.L	#0,D0
+	RTS
+
+READCUSTOM
+	CMP.W	#$D20A,D0
+	BNE.S	.2
+	BSR.S	RANDOM
+	LSR.W	#5,D1
+	AND.L	#$FF,D1
+	RTS
+
+.2	CMP.W	#$D40B,D0
+	BNE.S	.3
+	MOVE.B	$DFF006,D1
+	SWAP	D0
+	MOVE.W	$DFF004,D0
+	LSR.B	#1,D0
+	ROXR.B	#1,D1
+	CLR.W	D0
+	SWAP	D0
+	RTS
+
+.3	MOVE.B	0(A4,D0.L),D1
+	RTS
+
+
+RANDOM	MOVE.L	RANDOM1(PC),D1
+	ADD.L	RANDOM2(PC),D1
+	MOVE.L	D1,RANDOM1
+	ROR.L	#$04,D1
+	SUB.W	RANDOM2(PC),D1
+	MOVE.L	D1,-(A7)
+	MOVE.W	$DFF014,D1
+	SWAP	D1
+	MOVE.W	$DFF014,D1
+	SWAP	D1
+	EOR.L	D1,(A7)
+	MOVE.L	(A7)+,D1
+	EOR.L	D1,RANDOM2
+	ADD.L	#$56565311,RANDOM1
+	RTS
+
+RANDOM1	DC.L	$3F3F751F
+RANDOM2	DC.L	$17179834
+SPMIN	DC.L	0
+SPMAX	DC.L	0
+PCSTORE	DC.W	0
+
+	SECTION	SAMPLES,DATA_C
+SILENCE	DC.B	0,0,0,0,0,0,0,0
+
+NOPOLY_1_5
+;FREQ:25568
+	DC.B	$68,-$68
+NOPOLY_1_5END
+
+NOPOLY_4
+;FREQ:25568
+	DC.B	$5F,$4C,$A0,$B3
+NOPOLY_4END
+
+NOPOLY_9
+;FREQ:25568
+	DC.B	$67,$4E,$51,$4A,$98,$B0,$AE,$B3
+NOPOLY_9END
+
+NOPOLY_31_5
+;FREQ:25568
+	DC.B	$68,$58,$58,$56,$54,$52,$50,$4F
+	DC.B	$4D,$4B,$49,$48,$20,$97,$A7,$A7
+	DC.B	$A8,$AA,$AC,$AE,$B0,$B1,$B3,$B4
+	DC.B	$B6,$E7
+NOPOLY_31_5END
+
+POLY05_1_5
+;FREQ:25568
+	DC.B	$46,$3F,$3E,$3D,$3C,$00,$F7,$00
+	DC.B	$B7,$BF,$FF,$42,$3C,$3B,$00,$B7
+	DC.B	$FF,$40,$00,$F7,$00,$F7,$40,$F0
+	DC.B	$F7,$3C,$00,$B6,$BC,$FF,$00,$B9
+	DC.B	$BF,$BF,$C1,$C2,$FF,$00,$FF,$46
+	DC.B	$3F,$00,$BC,$C2,$C3,$FF,$47,$00
+	DC.B	$BF,$FF,$00,$FF,$00,$BF,$FF,$08
+	DC.B	$BF,$FF,$48,$42,$00,$FF
+POLY05_1_5END
+
+POLY05_4
+;FREQ:25568
+	DC.B	$49,$41,$41,$3F,$3E,$3D,$3B,$3A
+	DC.B	$39,$37,$36,$00,$B1,$EF,$3C,$00
+	DC.B	$AF,$BA,$BB,$BC,$BD,$F7,$44,$3B
+	DC.B	$3A,$39,$38,$37,$35,$00,$AF,$B8
+	DC.B	$B9,$EB,$40,$37,$36,$00,$AF,$EF
+	DC.B	$40,$00,$B1,$DF,$40,$35,$35,$00
+	DC.B	$AF,$EF,$40,$33,$33,$00,$AD,$B7
+	DC.B	$B7,$B9,$BA,$DF,$40,$04,$B3,$BD
+	DC.B	$BD,$BF,$C0,$C1,$C3,$C4,$C5,$C6
+	DC.B	$C7,$FB,$50,$20,$BF,$EF,$4D,$43
+	DC.B	$43,$42,$40,$10,$BB,$C3,$C3,$C5
+	DC.B	$C6,$C7,$C8,$FF,$50,$45,$45,$08
+	DC.B	$BD,$C7,$C7,$F7,$4E,$20,$BF,$EF
+	DC.B	$4D,$10,$BF,$C8,$C9,$FF,$50,$10
+	DC.B	$BF,$CA,$CB,$FF,$50,$47,$47,$45
+	DC.B	$44,$10,$BF,$FF
+POLY05_4END
+
+POLY05_6_5
+;FREQ:25568
+	DC.B	$1F,$58,$53,$51,$50,$4E,$4C,$4B
+	DC.B	$49,$48,$46,$45,$00,$BF,$C7,$FF
+	DC.B	$49,$44,$00,$BF,$C6,$C7,$C8,$CA
+	DC.B	$0F,$4C,$47,$46,$44,$43,$00,$BF
+	DC.B	$C4,$C6,$C7,$C8,$C9,$CB,$CC,$17
+	DC.B	$4D,$49,$47,$46,$44,$00,$C3,$C7
+	DC.B	$FF,$48,$43,$00,$BF,$C6,$0F,$48
+	DC.B	$43,$42,$40,$3F,$3E,$3C,$3B,$00
+	DC.B	$B7,$BE,$17,$40,$3B,$3A,$39,$38
+	DC.B	$E8,$B5,$BA,$FF,$3C,$38,$37,$36
+	DC.B	$35,$33,$32,$31,$30,$2F,$2E,$2C
+	DC.B	$2C,$2B,$29,$28,$27,$E0,$A5,$AB
+	DC.B	$AD,$AE,$B0,$B1,$B3,$B5,$B6,$B8
+	DC.B	$B9,$FF,$3C,$37,$E8,$B6,$BA,$FF
+	DC.B	$40,$37,$37,$35,$34,$E0,$B3,$B7
+	DC.B	$B8,$BA,$BB,$FF,$40,$39,$38,$37
+	DC.B	$36,$34,$33,$32,$F0,$AF,$B5,$B6
+	DC.B	$B8,$B9,$FF,$3C,$37,$F0,$B5,$BA
+	DC.B	$FF,$3C,$38,$F0,$B5,$BB,$BC,$BD
+	DC.B	$BF,$C0,$C1,$C3,$FF,$44,$40,$00
+	DC.B	$BD,$C3,$C4,$C5,$C6,$FF,$48,$43
+	DC.B	$00,$BF,$C6,$C7,$C8,$C9,$CB,$CC
+	DC.B	$CD,$CE,$CF,$D0,$D1,$D2,$D3,$D4
+	DC.B	$D5,$D6
+POLY05_6_5END
+
+POLY05_0
+;FREQ:22655 (PERIOD 158)
+	DC.B	$52,$3D,$F7,$F7,$18,$F5,$E8,$1F
+	DC.B	$B6,$FF,$41,$AC,$C0,$00,$08,$DF
+	DC.B	$08,$17,$F0,$48,$F8,$BC
+POLY05_0END
+
+POLY04A_0
+;FREQ:25568
+	DC.B	$4E,$00,$F3,$10,$07,$B3
+POLY04A_0END
+
+POLY04A_1_5
+;FREQ:25568
+	DC.B	$4F,$38,$3C,$38,$AB,$4C,$A7,$50
+	DC.B	$32,$A8,$C2,$48,$A6,$C0,$BF,$4F
+	DC.B	$38,$3C,$38,$AB,$4C,$A7,$50,$32
+	DC.B	$A8,$C2,$48,$A6,$C0,$BF
+POLY04A_1_5END
+
+POLY04A_4
+;FREQ:25568
+	DC.B	$3F,$35,$38,$36,$AA,$BC,$B9,$BB
+	DC.B	$47,$36,$B0,$BF,$BC,$BF,$C0,$C1
+	DC.B	$4B,$3C,$3F,$3D,$3B,$3A,$39,$38
+	DC.B	$B0,$BD,$47,$34,$B0,$BE
+POLY04A_4END
+
+POLY04A_9
+;FREQ:25568
+	DC.B	$4F,$42,$45,$43,$41,$40,$3F,$3E
+	DC.B	$3C,$3B,$3A,$38,$37,$36,$35,$34
+	DC.B	$AA,$B9,$B7,$B9,$3F,$34,$37,$35
+	DC.B	$AC,$BB,$B8,$BA,$47,$35,$38,$36
+	DC.B	$35,$34,$33,$31,$A8,$B7,$B5,$B7
+	DC.B	$B8,$BA,$BB,$BD,$3F,$38,$3B,$38
+	DC.B	$B0,$BE,$BB,$BE,$BF,$C0,$C1,$C3
+	DC.B	$C4,$C6,$C7,$C8
+POLY04A_9END
+
+POLY04A_34
+;FREQ:25568
+	DC.B	$59,$42,$45,$43
+	DC.B	$41,$40,$3F,$3E,$3C,$3B,$39,$38
+	DC.B	$37,$34,$A3,$BA,$B7,$B9,$BA,$BC
+	DC.B	$BD,$BF,$C0,$C1,$C3,$C4,$C5,$CF
+	DC.B	$5A,$43,$45,$43,$42,$41,$40,$3E
+	DC.B	$3D,$3B,$3A,$39,$38,$37,$35,$34
+	DC.B	$33,$32,$31,$30,$2F,$2E,$2C,$2B
+	DC.B	$2A,$29,$28,$27,$27,$26,$25,$24
+	DC.B	$23,$22,$21,$20,$20,$1F,$1E,$1D
+	DC.B	$1D,$1C,$1B,$1A,$1A,$19,$18,$18
+	DC.B	$17,$16,$16,$15,$14,$14,$13,$08
+	DC.B	$81,$97,$96,$98,$9A,$9C,$9E,$A0
+	DC.B	$A2,$A4,$A6,$A7,$A9,$AB,$AC,$AE
+	DC.B	$B0,$B1,$B3,$B4,$B6,$B8,$B9,$BA
+	DC.B	$BC,$BD,$BF,$C0,$C1,$C3,$C4,$C5
+	DC.B	$C7,$C8,$C9,$CA,$CB,$CC,$CE,$CF
+	DC.B	$D0,$DF
+	DC.B	$63,$4D,$50,$4D,$4C,$4A,$49,$47
+	DC.B	$46,$44,$43,$42,$40,$3E,$AC,$C2
+	DC.B	$BF,$C1,$C3,$C4,$C5,$C6,$C7,$C9
+	DC.B	$CA,$CB,$CC,$CD,$CF,$D0,$D1,$D2
+	DC.B	$D3,$D4,$D5,$D6,$D7,$D8,$D9,$DA
+	DC.B	$DB,$DD,$6E,$57,$5A,$58,$56,$54
+	DC.B	$52,$51,$4F,$4E,$4C,$4A,$49,$47
+	DC.B	$46,$44,$43,$42,$40,$3F,$3E,$3C
+	DC.B	$3B,$3A,$38,$38,$36,$32,$A2,$B9
+	DC.B	$B6,$B8,$B9,$BB,$BC,$BE,$BF,$C0
+	DC.B	$C2,$C3,$C4,$CB
+POLY04A_34END
+
+;POLY04B
+;	DC.B	0,0,0,0,0,0,0,0
+
+POLY04C_1_5
+;FREQ:25568
+	DC.B	$3C,$20,$A7,$3C,$20,$A7
+POLY04C_1_5END
+
+POLY04C_4
+;FREQ:25568
+	DC.B	$3A,$27,$29,$20,$99,$B7
+POLY04C_4END
+
+POLY04C_9
+;FREQ:25568
+	DC.B	$3C,$29,$2A,$29,$28,$27,$27,$20
+	DC.B	$97,$AC,$AB,$B7
+POLY04C_9END
+
+POLY04D_1_5
+;FREQ:25568
+	DC.B	$5C,$BA,$CE,$5D,$BC
+	DC.B	$5C,$BA,$CE,$5D,$BC
+POLY04D_1_5END
+
+POLY04D_4
+;FREQ:25568
+	DC.B	$5C,$42,$BA,$CF,$CC,$CF,$5D,$44
+	DC.B	$BC,$D3
+POLY04D_4END
+
+POLY04D_9
+;FREQ:25568
+	DC.B	$5F,$4A,$4C,$48,$BA,$CF,$CC,$D1
+	DC.B	$5D,$47,$4A,$44,$B8,$CD,$CA,$CC
+	DC.B	$CD,$CE,$CF,$D7
+POLY04D_9END
+
+POLY04D_34
+;FREQ:25568
+	DC.B	$61,$56,$55,$53,$51,$50,$4E,$4C
+	DC.B	$4B,$49,$47,$46,$44,$20,$BB,$C7
+	DC.B	$C7,$C8,$C9,$CA,$CC,$CD,$CE,$CF
+	DC.B	$D0,$D1,$D2,$F7,$5A,$4E,$4D,$4C
+	DC.B	$4A,$48,$47,$45,$44,$42,$41,$40
+	DC.B	$3E,$20,$B5,$C1,$C1,$C2,$C3,$C5
+	DC.B	$C6,$C7,$C8,$C9,$CA,$CC,$CC,$CE
+	DC.B	$CF,$D0,$D1,$D2,$D3,$D4,$D5,$D6
+	DC.B	$D6,$D8,$D8,$D9,$DA,$F7
+POLY04D_34END
+
+POLY0405A_0
+;FREQ:25568
+	DC.B	$4F,$40,$43,$20,$FF,$44,$3E,$3D
+	DC.B	$00,$28,$AF,$C1,$4B,$3A,$00,$2F
+	DC.B	$F7,$B6,$FF,$40,$3B,$3A,$F7,$20
+	DC.B	$37,$20,$B5,$30,$EF,$B0,$C3,$49
+	DC.B	$37,$20,$EF,$B0,$3F,$35,$38,$36
+	DC.B	$B0,$BC,$B9,$2F,$38,$18,$AF,$BC
+	DC.B	$FF,$20,$AF,$BF,$FF,$D0,$47,$14
+	DC.B	$B5,$C0,$FF,$D0,$C7,$30,$37,$3D
+	DC.B	$B4,$C3,$4B,$3B,$3D,$3C,$32,$AC
+	DC.B	$47,$10,$F0,$1F,$38,$C8,$3F,$34
+	DC.B	$E8,$B5,$BB,$BC,$47,$20,$F4,$28
+	DC.B	$AD,$BE,$0F,$40,$3A,$39,$38,$C8
+	DC.B	$FF,$3A,$F0,$42,$B0,$BC,$3F,$10
+	DC.B	$AF,$2F,$36,$18,$37,$34,$F0,$20
+	DC.B	$EF,$10,$EF,$10,$37,$10,$A9,$B8
+	DC.B	$3F,$10,$AF,$20,$AB,$BB,$3F,$14
+	DC.B	$F0,$B3,$BB,$BC,$FF,$20,$3F,$20
+	DC.B	$F7,$C8,$FF,$40,$00,$45,$35,$37
+	DC.B	$35,$34,$F0,$B3,$FB,$AC,$BF,$20
+	DC.B	$B7,$4A,$30,$AA,$BD,$0E,$B3,$4C
+	DC.B	$F3,$B4,$47,$36,$39,$10,$AF,$BC
+	DC.B	$BC,$BE,$47,$38,$34,$AC,$FF,$20
+	DC.B	$B3,$12,$B3,$C1,$C1,$C3,$08,$0F
+	DC.B	$B9,$C7
+POLY0405A_0END
+
+POLY0405A_1_5
+;FREQ:25568
+	DC.B	$49,$36,$38,$36,$35,$34,$33,$32
+	DC.B	$30,$30,$2E,$2D,$2C,$2B,$2A,$29
+	DC.B	$28,$27,$25,$9A,$38,$95,$AF,$37
+	DC.B	$98,$B1,$3B,$26,$9E,$B1,$B1,$3F
+	DC.B	$2B,$2C,$A0,$B3,$B1,$B5,$3F,$A2
+	DC.B	$B8,$B6,$B8,$B9,$BB,$BC,$BE,$BF
+	DC.B	$4F,$3B,$3C,$B0,$4F,$36,$AE,$C0
+	DC.B	$BE,$C0,$C1,$C3,$C4,$C7,$54,$40
+	DC.B	$B7,$56,$3E,$41,$3C,$B0,$C4,$C2
+	DC.B	$C4,$C5,$C6,$C7,$C9,$CA,$CB,$CC
+	DC.B	$CD,$CF,$5E,$49,$49,$BD,$5D,$44
+	DC.B	$BA,$CF,$59,$45,$47,$44,$B9,$56
+	DC.B	$B3,$CA,$C7,$C9,$CB,$59,$45,$44
+	DC.B	$B8,$CB,$C9,$CB,$CC,$CF,$5C,$48
+	DC.B	$4A,$46,$B9,$CE,$56,$B7,$CE,$CB
+	DC.B	$CF,$5B,$47,$48,$BD,$5A,$B8,$5B
+	DC.B	$43,$46,$44,$41,$B3,$C7,$C7,$53
+	DC.B	$41,$43,$41,$40,$3C,$AF,$C6,$4D
+	DC.B	$AD,$C4,$C2,$C4,$C5,$C7,$56,$41
+	DC.B	$43,$41,$40,$3D,$B1,$4F,$3A,$3C
+	DC.B	$3B,$38,$AB,$BF,$BD,$BF,$4E,$39
+	DC.B	$3C,$3A,$39,$38,$36,$32,$A6,$BC
+	DC.B	$46,$30,$A8,$BB,$BA,$49,$35,$37
+	DC.B	$35,$32,$A9,$47,$2C,$A5,$B8,$B7
+	DC.B	$B9,$BA,$BC,$BD,$BF,$4D,$39,$3C
+	DC.B	$3A,$39,$38,$36,$32,$A8,$46,$A3
+	DC.B	$BB,$B9,$48,$34,$37,$34,$A6,$BA
+	DC.B	$B9,$47,$31,$A9,$BC,$BA,$BC,$BD
+	DC.B	$C3,$4E,$3A,$3C,$3A,$39,$38,$37
+	DC.B	$36,$32,$A5,$BB,$44,$A4,$BC,$BB
+	DC.B	$49,$35,$38,$36,$34,$33,$32,$31
+	DC.B	$30,$A1,$B6,$41,$2E,$30,$2F,$2E
+	DC.B	$2C,$2C,$28,$9C,$B0,$AE,$B0,$B2
+	DC.B	$B3,$B5,$B7,$B8,$BA,$BB,$BF,$4B
+	DC.B	$38,$38,$AB,$BF,$BD,$BF,$C0,$C1
+	DC.B	$C5,$50,$B0,$C7,$C5,$C7,$55,$41
+	DC.B	$43,$41,$40,$3F,$3D,$3C,$3B,$39
+	DC.B	$38,$35,$A8,$BD,$47,$35,$37,$35
+	DC.B	$34,$33,$32,$30,$30,$2D,$A1,$40
+	DC.B	$9D,$B5,$B3,$B5,$B7,$45,$31,$34
+	DC.B	$30,$A4,$B8,$B6,$B8,$B9,$BB,$BC
+	DC.B	$BD,$BF,$4E,$3A,$3C,$38,$AC,$C0
+	DC.B	$BD,$C1,$4E,$3A,$3C,$39,$AC,$C0
+	DC.B	$BE,$C0,$C1,$C7,$50,$B0,$C7,$C9
+	DC.B	$54,$40,$42,$40,$3F,$3C,$B0,$C3
+	DC.B	$4E,$3B,$3C,$38,$AE,$4E,$36,$39
+	DC.B	$36,$A9,$BC,$BA,$BC,$BE,$C3,$4E
+	DC.B	$3B,$3C,$38,$AD,$4E,$36,$39,$37
+	DC.B	$36,$35,$33,$32,$30,$A3,$B9,$43
+	DC.B	$2F,$31,$30,$2C,$A0,$B7,$3F,$2A
+	DC.B	$A2,$B5,$B4,$B6,$B9,$46,$33,$35
+	DC.B	$33,$32,$30,$A2,$B6,$B4,$B7,$B8
+	DC.B	$B9,$BB,$BC,$BF,$4D,$39,$3B,$38
+	DC.B	$AA,$BF,$BF,$4C,$36,$AC,$C3,$4C
+	DC.B	$39,$39,$AE,$4D,$36,$38,$37,$36
+	DC.B	$32,$A7,$47,$30,$30,$A4,$B8,$B6
+	DC.B	$B8,$B9,$BD,$4A,$37,$36,$AF,$4B
+	DC.B	$33,$36,$34,$32,$A4,$B9,$B7,$B9
+	DC.B	$BF
+	DC.B	$49,$36,$38,$36,$35,$34,$33,$32
+	DC.B	$30,$30,$2E,$2D,$2C,$2B,$2A,$29
+	DC.B	$28,$27,$25,$9A,$38,$95,$AF,$37
+	DC.B	$98,$B1,$3B,$26,$9E,$B1,$B1,$3F
+	DC.B	$2B,$2C,$A0,$B3,$B1,$B5,$3F,$A2
+	DC.B	$B8,$B6,$B8,$B9,$BB,$BC,$BE,$BF
+	DC.B	$4F,$3B,$3C,$B0,$4F,$36,$AE,$C0
+	DC.B	$BE,$C0,$C1,$C3,$C4,$C7,$54,$40
+	DC.B	$B7,$56,$3E,$41,$3C,$B0,$C4,$C2
+	DC.B	$C4,$C5,$C6,$C7,$C9,$CA,$CB,$CC
+	DC.B	$CD,$CF,$5E,$49,$49,$BD,$5D,$44
+	DC.B	$BA,$CF,$59,$45,$47,$44,$B9,$56
+	DC.B	$B3,$CA,$C7,$C9,$CB,$59,$45,$44
+	DC.B	$B8,$CB,$C9,$CB,$CC,$CF,$5C,$48
+	DC.B	$4A,$46,$B9,$CE,$56,$B7,$CE,$CB
+	DC.B	$CF,$5B,$47,$48,$BD,$5A,$B8,$5B
+	DC.B	$43,$46,$44,$41,$B3,$C7,$C7,$53
+	DC.B	$41,$43,$41,$40,$3C,$AF,$C6,$4D
+	DC.B	$AD,$C4,$C2,$C4,$C5,$C7,$56,$41
+	DC.B	$43,$41,$40,$3D,$B1,$4F,$3A,$3C
+	DC.B	$3B,$38,$AB,$BF,$BD,$BF,$4E,$39
+	DC.B	$3C,$3A,$39,$38,$36,$32,$A6,$BC
+	DC.B	$46,$30,$A8,$BB,$BA,$49,$35,$37
+	DC.B	$35,$32,$A9,$47,$2C,$A5,$B8,$B7
+	DC.B	$B9,$BA,$BC,$BD,$BF,$4D,$39,$3C
+	DC.B	$3A,$39,$38,$36,$32,$A8,$46,$A3
+	DC.B	$BB,$B9,$48,$34,$37,$34,$A6,$BA
+	DC.B	$B9,$47,$31,$A9,$BC,$BA,$BC,$BD
+	DC.B	$C3,$4E,$3A,$3C,$3A,$39,$38,$37
+	DC.B	$36,$32,$A5,$BB,$44,$A4,$BC,$BB
+	DC.B	$49,$35,$38,$36,$34,$33,$32,$31
+	DC.B	$30,$A1,$B6,$41,$2E,$30,$2F,$2E
+	DC.B	$2C,$2C,$28,$9C,$B0,$AE,$B0,$B2
+	DC.B	$B3,$B5,$B7,$B8,$BA,$BB,$BF,$4B
+	DC.B	$38,$38,$AB,$BF,$BD,$BF,$C0,$C1
+	DC.B	$C5,$50,$B0,$C7,$C5,$C7,$55,$41
+	DC.B	$43,$41,$40,$3F,$3D,$3C,$3B,$39
+	DC.B	$38,$35,$A8,$BD,$47,$35,$37,$35
+	DC.B	$34,$33,$32,$30,$30,$2D,$A1,$40
+	DC.B	$9D,$B5,$B3,$B5,$B7,$45,$31,$34
+	DC.B	$30,$A4,$B8,$B6,$B8,$B9,$BB,$BC
+	DC.B	$BD,$BF,$4E,$3A,$3C,$38,$AC,$C0
+	DC.B	$BD,$C1,$4E,$3A,$3C,$39,$AC,$C0
+	DC.B	$BE,$C0,$C1,$C7,$50,$B0,$C7,$C9
+	DC.B	$54,$40,$42,$40,$3F,$3C,$B0,$C3
+	DC.B	$4E,$3B,$3C,$38,$AE,$4E,$36,$39
+	DC.B	$36,$A9,$BC,$BA,$BC,$BE,$C3,$4E
+	DC.B	$3B,$3C,$38,$AD,$4E,$36,$39,$37
+	DC.B	$36,$35,$33,$32,$30,$A3,$B9,$43
+	DC.B	$2F,$31,$30,$2C,$A0,$B7,$3F,$2A
+	DC.B	$A2,$B5,$B4,$B6,$B9,$46,$33,$35
+	DC.B	$33,$32,$30,$A2,$B6,$B4,$B7,$B8
+	DC.B	$B9,$BB,$BC,$BF,$4D,$39,$3B,$38
+	DC.B	$AA,$BF,$BF,$4C,$36,$AC,$C3,$4C
+	DC.B	$39,$39,$AE,$4D,$36,$38,$37,$36
+	DC.B	$32,$A7,$47,$30,$30,$A4,$B8,$B6
+	DC.B	$B8,$B9,$BD,$4A,$37,$36,$AF,$4B
+	DC.B	$33,$36,$34,$32,$A4,$B9,$B7,$B9
+	DC.B	$BF
+POLY0405A_1_5END
+
+POLY0405A_4
+;FREQ:25568
+	DC.B	$4B,$38,$3B,$39,$38,$36,$35,$34
+	DC.B	$33,$32,$30,$30,$2F,$2D,$2C,$2C
+	DC.B	$2A,$29,$28,$27,$27,$26,$25,$24
+	DC.B	$23,$22,$21,$20,$20,$1F,$1E,$1E
+	DC.B	$1D,$1C,$1B,$1B,$1A,$18,$90,$A1
+	DC.B	$2B,$18,$91,$A3,$A2,$A5,$2F,$1E
+	DC.B	$96,$A9,$A7,$AB,$36,$24,$27,$25
+	DC.B	$99,$AC,$AB,$AD,$AF,$B1,$3B,$2B
+	DC.B	$2D,$2C,$2B,$29,$9E,$B1,$AF,$B1
+	DC.B	$B3,$B4,$B6,$B7,$44,$30,$A9,$BB
+	DC.B	$B9,$BB,$BD,$BE,$BF,$C1,$C2,$C3
+	DC.B	$C5,$C6,$C7,$C9,$CA,$CB,$CC,$CE
+	DC.B	$5A,$47,$49,$47,$46,$42,$B8,$CB
+	DC.B	$53,$41,$43,$40,$B4,$C7,$C5,$C7
+	DC.B	$C8,$C9,$CA,$CC,$CD,$CE,$CF,$D0
+	DC.B	$D1,$D2,$D3,$D6,$5F,$4E,$50,$4C
+	DC.B	$C0,$D3,$5B,$4A,$4C,$49,$48,$46
+	DC.B	$45,$42,$B8,$C9,$C7,$C9,$CA,$CB
+	DC.B	$CD,$CE,$CF,$D0,$D1,$D2,$D3,$D4
+	DC.B	$D6,$D6,$D7,$D8,$D9,$DA,$DB,$DC
+	DC.B	$DD,$DE,$DF,$E0,$6B,$58,$5A,$58
+	DC.B	$56,$53,$C8,$DB,$63,$50,$52,$4E
+	DC.B	$C2,$D5,$D3,$D6,$5F,$4E,$4F,$4D
+	DC.B	$4C,$4A,$48,$46,$BA,$CD,$56,$43
+	DC.B	$BA,$CC,$CA,$CC,$CD,$CE,$CF,$D0
+	DC.B	$D1,$D3,$5E,$4C,$4D,$4B,$4A,$46
+	DC.B	$BC,$CE,$CC,$CD,$CE,$D0,$D1,$D2
+	DC.B	$D3,$D4,$D5,$D7,$5F,$4F,$51,$4E
+	DC.B	$4D,$4B,$4A,$48,$C0,$CE,$CC,$CF
+	DC.B	$59,$46,$BD,$CF,$CD,$CF,$D0,$D1
+	DC.B	$D2,$D3,$5F,$4C,$4E,$4C,$4A,$48
+	DC.B	$BC,$CF,$58,$44,$BB,$CE,$57,$44
+	DC.B	$46,$44,$43,$41,$40,$3F,$3D,$3C
+	DC.B	$B0,$C2,$C0,$C2,$C3,$C6,$4F,$3E
+	DC.B	$40,$3E,$3D,$3C,$3A,$39,$38,$37
+	DC.B	$36,$32,$A8,$BB,$B9,$BC,$47,$34
+	DC.B	$AC,$BE,$BC,$BE,$BF,$C0,$C2,$C3
+	DC.B	$C4,$C6,$C7,$C9,$55,$42,$43,$42
+	DC.B	$40,$3F,$3E,$3C,$3B,$3A,$38,$36
+	DC.B	$AC,$BE,$47,$35,$37,$35,$34,$33
+	DC.B	$31,$30,$2F,$2D,$A1,$B5,$B3,$B5
+	DC.B	$B7,$B8,$B9,$BD,$47,$35,$37,$35
+	DC.B	$34,$33,$32,$31,$30,$2F,$2D,$2C
+	DC.B	$2B,$2A,$29,$28,$9C,$AF,$AE,$B1
+	DC.B	$3D,$2A,$2C,$2A,$A0,$B1,$B0,$B2
+	DC.B	$B3,$B7,$3F,$30,$31,$30,$2F,$2E
+	DC.B	$2D,$2C,$2B,$28,$A0,$B1,$3A,$28
+	DC.B	$2A,$26,$9C,$B0,$AE,$B0,$B2,$B3
+	DC.B	$B5,$B7,$B8,$B9,$BB,$BC,$BE,$BF
+	DC.B	$C0,$C3,$4F,$3C,$3E,$3C,$3B,$39
+	DC.B	$38,$37,$36,$34,$33,$32,$31,$30
+	DC.B	$2F,$2C,$A2,$B5,$3E,$2B,$A4,$B5
+	DC.B	$B4,$B6,$B7,$B9,$45,$33,$35,$33
+	DC.B	$32,$31,$30,$2E,$A3,$B6,$B4,$B6
+	DC.B	$B7,$BA,$45,$33,$35,$33,$A8,$BA
+	DC.B	$B8,$BA,$BC,$BD,$BE,$C0,$C1,$C3
+	DC.B	$C4,$C7,$52,$3F,$41,$3F,$3E,$3C
+	DC.B	$3B,$3A,$38,$38,$36,$35,$33,$32
+	DC.B	$31,$30,$30,$2D,$A2,$B5,$B3,$B7
+	DC.B	$42,$2E,$A8,$B9,$B7,$B9,$BA,$BE
+	DC.B	$49,$36,$38,$36,$35,$34,$33,$32
+	DC.B	$31,$30,$2E,$2D,$2C,$2B,$2A,$29
+	DC.B	$28,$26,$9B,$AE,$AD,$B1,$3B,$29
+	DC.B	$2C,$2A,$29,$28,$27,$26,$26,$24
+	DC.B	$23,$23,$22,$21,$20,$1F,$93,$A7
+	DC.B	$A5,$A7,$A9,$AB,$AD,$AE,$B0,$B2
+	DC.B	$B3,$B5,$B7,$B8,$B9,$BB,$BC,$BE
+	DC.B	$BF,$C0,$C2,$C3,$C4,$C7,$53,$40
+	DC.B	$41,$40,$3E,$3C,$B0,$C3,$C1,$C3
+	DC.B	$C4,$C6,$C7,$C8,$C9,$CB,$CC,$CD
+	DC.B	$CE,$D1,$5C,$46,$C0,$D1,$CF,$D0
+	DC.B	$D2,$D3,$D4,$D7,$61,$4E,$50,$4E
+	DC.B	$4C,$4A,$49,$47,$46,$44,$43,$42
+	DC.B	$40,$3F,$3E,$3C,$3B,$3A,$38,$37
+	DC.B	$36,$35,$34,$30,$A6,$B9,$B7,$BA
+	DC.B	$46,$33,$36,$34,$33,$32,$31,$30
+	DC.B	$2E,$2D,$2C,$2B,$2A,$29,$28,$27
+	DC.B	$27,$26,$24,$22,$98,$AD,$35,$20
+	DC.B	$9A,$AC,$AB,$AD,$AE,$B0,$B2,$B3
+	DC.B	$B5,$B8,$44,$31,$33,$32,$30,$30
+	DC.B	$2E,$2C,$A0,$B4,$B2,$B4,$B6,$B7
+	DC.B	$B9,$BA,$BC,$BD,$BF,$C0,$C1,$C3
+	DC.B	$C4,$C5,$C7,$C9,$55,$41,$43,$41
+	DC.B	$40,$3F,$3D,$38,$B0,$C2,$C0,$C2
+	DC.B	$C3,$C5,$C6,$CB,$54,$41,$43,$41
+	DC.B	$40,$3E,$3D,$39,$B0,$C2,$C0,$C2
+	DC.B	$C3,$C4,$C6,$C7,$C8,$C9,$CB,$CD
+	DC.B	$58,$44,$BC,$CE,$CC,$CE,$CE,$D1
+	DC.B	$5D,$49,$4B,$49,$47,$46,$44,$43
+	DC.B	$42,$40,$3F,$3C,$B1,$C4,$C1,$C5
+	DC.B	$4F,$3D,$40,$3D,$3C,$3B,$39,$36
+	DC.B	$AC,$BF,$47,$36,$38,$36,$35,$34
+	DC.B	$33,$30,$A6,$B8,$B6,$B8,$BA,$BB
+	DC.B	$BD,$BE,$BF,$C1,$C2,$C6,$50,$3D
+	DC.B	$40,$3D,$3C,$3B,$39,$36,$AC,$BF
+	DC.B	$49,$36,$38,$36,$35,$34,$33,$32
+	DC.B	$30,$30,$2E,$2D,$2C,$2B,$2A,$29
+	DC.B	$28,$26,$9C,$AE,$AD,$AF,$3B,$29
+	DC.B	$2B,$2A,$29,$28,$27,$26,$25,$22
+	DC.B	$98,$AB,$AA,$AF,$39,$27,$29,$24
+	DC.B	$9C,$AE,$AD,$AF,$B0,$B2,$B4,$B5
+	DC.B	$B7,$B9,$46,$33,$35,$33,$32,$31
+	DC.B	$30,$2F,$2E,$2C,$2C,$28,$9E,$B1
+	DC.B	$B0,$B2,$B3,$B5,$B7,$B8,$B9,$BB
+	DC.B	$BC,$BE,$BF,$C0,$C2,$C3,$C5,$C7
+	DC.B	$53,$40,$42,$40,$3E,$3D,$3C,$38
+	DC.B	$AE,$C0,$BF,$C1,$C2,$C7,$50,$3E
+	DC.B	$3F,$3C,$B0,$C3,$C1,$C7,$50,$3D
+	DC.B	$40,$3D,$3C,$38,$AE,$C3,$4B,$38
+	DC.B	$3A,$38,$37,$36,$35,$34,$33,$31
+	DC.B	$30,$2E,$A3,$B7,$3F,$2D,$30,$2E
+	DC.B	$2D,$2A,$A0,$B3,$B1,$B3,$B5,$B6
+	DC.B	$B8,$B9,$BB,$BC,$BE,$C3,$4C,$39
+	DC.B	$3B,$39,$38,$36,$AA,$BF,$47,$35
+	DC.B	$37,$35,$34,$33,$32,$31,$30,$2C
+	DC.B	$A2,$B5,$B4,$B6,$B7,$B9,$BA,$BC
+	DC.B	$BD,$BF
+POLY0405A_4END
+
+POLY0405C_1_5
+;FREQ:25568
+	DC.B	$42,$32,$33,$32,$31,$30,$2F,$2E
+	DC.B	$2D,$2C,$2B,$2A,$29,$28,$27,$27
+	DC.B	$14,$AF,$36,$24,$25,$24,$23,$23
+	DC.B	$22,$21,$20,$20,$08,$AF,$30,$00
+	DC.B	$93,$B7,$20,$93,$BB,$34,$23,$24
+	DC.B	$10,$97,$A6,$A6,$A8,$AA,$AC,$BF
+	DC.B	$3C,$2C,$2D,$2C,$2B,$2A,$29,$10
+	DC.B	$9B,$BF,$38,$29,$29,$18,$AF,$38
+	DC.B	$14,$AF,$38,$14,$9C,$AC,$AC,$BF
+	DC.B	$3C,$2C,$2D,$2C,$2B,$2A,$29,$10
+	DC.B	$9D,$AC,$AB,$AD,$AF,$B1,$BF,$40
+	DC.B	$20,$A6,$CB,$24,$BB,$42,$32,$33
+	DC.B	$32,$31,$30,$2F,$2E,$2D,$2C,$2B
+	DC.B	$2A,$29,$28,$27,$27,$10,$AF,$36
+	DC.B	$24,$26,$24,$24,$23,$22,$21,$20
+	DC.B	$20,$08,$A7,$30,$08,$93,$B7,$18
+	DC.B	$95,$BF,$32,$23,$24,$08,$96,$A7
+	DC.B	$A6,$A8,$AA,$AC,$BF,$3A,$2C,$2D
+	DC.B	$2C,$2B,$2A,$29,$18,$9C,$BF,$38
+	DC.B	$29,$2A,$18,$AF,$38,$14,$AF,$38
+	DC.B	$14,$9B,$AC,$AC,$BF,$3C,$2C,$2D
+	DC.B	$2C,$2B,$2A,$29,$10,$9B,$AB,$AB
+	DC.B	$AD,$AF,$B1,$C7,$40,$20,$A5,$CF
+	DC.B	$30,$BF
+POLY0405C_1_5END
+
+POLY0405C_4
+;FREQ:25568
+	DC.B	$47,$3A,$3D,$3B,$3A,$39,$38,$36
+	DC.B	$35,$34,$33,$32,$31,$30,$2F,$2E
+	DC.B	$2D,$2C,$2B,$2A,$29,$28,$27,$27
+	DC.B	$26,$25,$24,$23,$23,$22,$21,$20
+	DC.B	$20,$1F,$94,$A4,$2F,$1F,$21,$20
+	DC.B	$1F,$1E,$1E,$1D,$1C,$1C,$1B,$1A
+	DC.B	$1A,$19,$18,$18,$17,$17,$16,$16
+	DC.B	$15,$14,$89,$9A,$1F,$14,$18,$16
+	DC.B	$90,$9C,$9A,$9D,$27,$1A,$98,$A2
+	DC.B	$A0,$A3,$2F,$20,$23,$22,$21,$20
+	DC.B	$20,$1F,$98,$A4,$A2,$A5,$A7,$A8
+	DC.B	$AA,$AC,$AE,$AF,$B1,$B3,$B4,$B7
+	DC.B	$3F,$33,$36,$34,$33,$32,$31,$30
+	DC.B	$2F,$2E,$2D,$2C,$2B,$2A,$29,$28
+	DC.B	$A0,$AD,$AB,$AD,$3B,$2A,$2D,$2C
+	DC.B	$2A,$2A,$29,$28,$A0,$AD,$33,$27
+	DC.B	$29,$28,$9C,$AC,$36,$27,$29,$28
+	DC.B	$A0,$AC,$AB,$AD,$AF,$B0,$B2,$B4
+	DC.B	$3F,$31,$33,$32,$31,$30,$2F,$2E
+	DC.B	$2D,$2C,$2B,$2A,$29,$28,$27,$26
+	DC.B	$A0,$AB,$A9,$AC,$AD,$AF,$B1,$B2
+	DC.B	$B4,$B6,$B7,$B9,$BA,$BD,$47,$38
+	DC.B	$3B,$39,$B0,$BD,$BB,$BD,$47,$39
+	DC.B	$B4,$C0
+POLY0405C_4END
+
+POLY0405C_9
+;FREQ:25568
+	DC.B	$57,$46,$48,$46,$45,$43,$42,$40
+	DC.B	$3F,$3E,$3D,$3C,$3A,$39,$38,$37
+	DC.B	$36,$35,$34,$33,$31,$30,$2F,$2E
+	DC.B	$2D,$2C,$2B,$2B,$2A,$29,$28,$27
+	DC.B	$26,$25,$24,$23,$23,$22,$21,$20
+	DC.B	$20,$1F,$1E,$1E,$1D,$1C,$1C,$1B
+	DC.B	$1A,$19,$19,$18,$18,$17,$17,$16
+	DC.B	$15,$15,$14,$14,$13,$13,$12,$12
+	DC.B	$11,$11,$10,$10,$84,$96,$94,$98
+	DC.B	$1F,$14,$17,$16,$16,$15,$14,$14
+	DC.B	$13,$13,$12,$12,$11,$11,$10,$10
+	DC.B	$0F,$0F,$0E,$0E,$0D,$0D,$0C,$0C
+	DC.B	$0C,$0C,$0B,$0B,$0A,$0A,$09,$09
+	DC.B	$09,$08,$08,$08,$07,$07,$07,$07
+	DC.B	$06,$06,$06,$05,$80,$8C,$8A,$8D
+	DC.B	$19,$0B,$0E,$0D,$0D,$0C,$0C,$0B
+	DC.B	$81,$92,$90,$93,$95,$98,$99,$9C
+	DC.B	$27,$19,$1C,$1A,$94,$A0,$9F,$A1
+	DC.B	$A3,$A5,$A7,$A9,$33,$25,$28,$26
+	DC.B	$26,$25,$24,$23,$23,$22,$21,$20
+	DC.B	$1F,$1F,$1E,$1D,$98,$A3,$A1,$A4
+	DC.B	$A6,$A7,$A9,$AB,$AD,$AF,$B0,$B2
+	DC.B	$B4,$B5,$B7,$B8,$BA,$BC,$BD,$BF
+	DC.B	$C0,$C1,$C3,$C4,$C6,$C7,$C8,$C9
+	DC.B	$55,$45,$47,$45,$44,$43,$41,$40
+	DC.B	$3F,$3E,$3C,$3B,$3A,$39,$38,$37
+	DC.B	$36,$34,$33,$32,$31,$30,$2F,$2E
+	DC.B	$2D,$2C,$2C,$2B,$2A,$29,$28,$27
+	DC.B	$A0,$AC,$AB,$AD,$AF,$B0,$B2,$B4
+	DC.B	$3F,$30,$33,$31,$30,$2F,$2E,$2D
+	DC.B	$2C,$2B,$2A,$29,$28,$27,$27,$26
+	DC.B	$9C,$AB,$A9,$AC,$37,$28,$2B,$29
+	DC.B	$28,$28,$27,$26,$A0,$AB,$AA,$AC
+	DC.B	$35,$28,$2B,$29,$29,$28,$27,$26
+	DC.B	$9C,$AB,$AA,$AC,$AE,$B0,$B1,$B3
+	DC.B	$B4,$B6,$B8,$B9,$BB,$BC,$BE,$BF
+	DC.B	$4B,$3B,$3D,$3C,$3A,$39,$38,$37
+	DC.B	$36,$35,$34,$33,$32,$31,$30,$2E
+	DC.B	$2D,$2C,$2C,$2B,$2A,$29,$28,$27
+	DC.B	$26,$25,$25,$24,$23,$22,$21,$20
+	DC.B	$98,$A6,$A4,$A7,$A9,$AA,$AC,$AE
+	DC.B	$B0,$B1,$B3,$B5,$B6,$B8,$B9,$BB
+	DC.B	$BC,$BE,$BF,$C0,$C2,$C3,$C5,$C6
+	DC.B	$C7,$C9,$CA,$CB,$53,$47,$49,$47
+	DC.B	$46,$44,$43,$41,$B4,$C6,$C3,$C6
+	DC.B	$C7,$C8,$C9,$CB,$57,$46,$48,$45
+	DC.B	$C0,$CA,$C8,$CA
+POLY0405C_9END
+
+POLY0405D_0_4
+;POLY0405D_D32
+;FREQ:24857 (PER:144)
+;DURCH 1.4 DIVIDIEREN = MAL 5 DURCH 7
+;ABWEICHUNG:0.5%
+	DC.B	$38,$BF,$D1,$D0,$D1,$D3,$D4,$E7
+	DC.B	$60,$4D,$C2,$D5,$D3,$57,$D8,$DF
+	DC.B	$60,$C1,$FF,$58,$D0,$D4,$D2,$D6
+	DC.B	$5F,$C4,$EF,$5C,$4C,$C3,$61,$C0
+	DC.B	$5B,$40,$C3,$2F,$4C,$F7,$54,$49
+	DC.B	$48,$E0,$CA,$FF,$4A,$46,$34,$BB
+	DC.B	$2F,$00,$C5,$4F,$C0,$D7,$52,$42
+	DC.B	$42,$10,$BD,$C4,$C5,$C6,$17,$10
+	DC.B	$EF,$40,$BB,$2F,$42,$B6,$FF,$C4
+	DC.B	$CA,$C8,$CA,$1F,$4A,$C0,$CD,$CA
+	DC.B	$CC,$1F,$C0,$D1
+;POLY0405D_D32END
+POLY0405D_0_4END
+
+POLY0405D_1_5
+;FREQ:25568
+	DC.B	$63,$54,$56,$53,$51,$50,$4E,$4C
+	DC.B	$4A,$C0,$59,$C0,$CF,$CC,$CF,$57
+	DC.B	$48,$4A,$48,$47,$45,$BA,$55,$40
+	DC.B	$B8,$4F,$3E,$40,$B4,$C6,$4D,$B4
+	DC.B	$C7,$C3,$C5,$C6,$C7,$C9,$CA,$CB
+	DC.B	$57,$C0,$57,$44,$47,$45,$B9,$C9
+	DC.B	$C7,$C9,$CA,$CB,$57,$C0,$CF,$55
+	DC.B	$C0,$D0,$CC,$CF,$5A,$C0,$5B,$47
+	DC.B	$C2,$CF,$CD,$57,$48,$C0,$CF,$CE
+	DC.B	$59,$C0,$D1,$CE,$D0,$5B,$4A,$4C
+	DC.B	$4A,$48,$46,$C0,$CC,$C9,$CB,$55
+	DC.B	$45,$47,$45,$B9,$4F,$B8,$CB,$4F
+	DC.B	$41,$43,$C0,$C8,$4F,$40,$40,$B8
+	DC.B	$C6,$C3,$C5,$C6,$C7,$C8,$C9,$CB
+	DC.B	$CC,$CD,$CE,$57,$48,$4A,$C0,$CE
+	DC.B	$CC,$CE,$57,$C0,$D1,$CE,$D0,$D1
+	DC.B	$D2,$D3,$D4,$D5,$D6,$D6,$D8,$5F
+	DC.B	$52,$53,$50,$C4,$D5,$D3,$D4,$D5
+	DC.B	$D7,$5F,$C8,$DA,$D6,$D8,$D9,$DA
+	DC.B	$65,$CC,$DE,$65,$53,$55,$53,$51
+	DC.B	$50,$4E,$4C,$4A,$C0,$57,$C0,$CF
+	DC.B	$CC,$CE,$5A,$48,$4A,$48,$47,$45
+	DC.B	$BA,$53,$40,$B8,$53,$3E,$40,$B4
+	DC.B	$C6,$4B,$B2,$C7,$C4,$C6,$C7,$C8
+	DC.B	$C9,$CA,$CB,$55,$C0,$5B,$44,$47
+	DC.B	$44,$C0,$CA,$C7,$C9,$CA,$CC,$57
+	DC.B	$BA,$CF,$57,$C0,$D0,$CD,$CF,$57
+	DC.B	$C0,$5B,$47,$C1,$CF,$CE,$5B,$48
+	DC.B	$C0,$CF,$CD,$57,$C0,$D2,$CF,$D1
+	DC.B	$5B,$4B,$4C,$4A,$49,$46,$BA,$CC
+	DC.B	$C9,$CC,$57,$46,$48,$45,$BA,$53
+	DC.B	$B8,$CB,$4F,$41,$43,$B6,$C8,$4F
+	DC.B	$40,$41,$B6,$C6,$C3,$C5,$C6,$C7
+	DC.B	$C9,$CA,$CB,$CC,$CD,$CE,$59,$48
+	DC.B	$4A,$C0,$CF,$CC,$CE,$57,$C0,$D1
+	DC.B	$CE,$D0,$D1,$D2,$D3,$D4,$D5,$D6
+	DC.B	$D7,$D9,$5F,$52,$53,$51,$C4,$D6
+	DC.B	$D3,$D4,$D5,$D7,$62,$C5,$DA,$D7
+	DC.B	$D8,$D9,$DB,$65,$C8,$DE
+POLY0405D_1_5END
+
+POLY0405D_4
+;FREQ:25568
+	DC.B	$54,$40,$B8,$C9,$C7,$C8,$C9,$CB
+	DC.B	$CC,$CD,$CE,$CF,$D0,$D1,$D2,$D3
+	DC.B	$D4,$D5,$D6,$D7,$D8,$D8,$D9,$DA
+	DC.B	$DB,$DC,$DD,$DD,$DE,$DF,$6B,$56
+	DC.B	$CE,$E0,$DD,$DF,$DF,$E3,$6C,$59
+	DC.B	$5B,$56,$CB,$DD,$DB,$DC,$DC,$DF
+	DC.B	$6A,$57,$58,$56,$54,$50,$C4,$D8
+	DC.B	$D5,$D9,$63,$50,$51,$4E,$C2,$D4
+	DC.B	$D2,$D3,$D4,$D5,$D6,$D7,$D8,$D9
+	DC.B	$D9,$DB,$DB,$DC,$DD,$DE,$DE,$DF
+	DC.B	$E0,$E0,$E1,$E2,$E3,$E3,$E4,$E7
+	DC.B	$71,$5E,$60,$5A,$D0,$E1,$DF,$E0
+	DC.B	$E0,$E1,$E2,$E5,$6F,$5A,$D1,$E3
+	DC.B	$E0,$E2,$E2,$E3,$E4,$E7,$71,$5E
+	DC.B	$5F,$5C,$5B,$56,$CB,$DE,$DB,$DF
+	DC.B	$69,$56,$57,$54,$C8,$DA,$D7,$DA
+	DC.B	$65,$52,$54,$51,$50,$4E,$4C,$49
+	DC.B	$C0,$D0,$CE,$CF,$D0,$D1,$D2,$D3
+	DC.B	$D4,$D5,$D6,$D7,$63,$50,$52,$50
+	DC.B	$4E,$48,$BE,$D1,$CF,$D0,$D1,$D2
+	DC.B	$D3,$D4,$D5,$D6,$D7,$D8,$D8,$DD
+	DC.B	$66,$53,$54,$50,$C4,$D7,$D5,$D6
+	DC.B	$D7,$DB,$65,$51,$53,$50,$C3,$D6
+	DC.B	$D3,$D4,$D5,$DB,$63,$50,$51,$4F
+	DC.B	$4E,$4C,$4A,$49,$47,$46,$44,$43
+	DC.B	$41,$40,$3F,$3D,$3C,$3A,$39,$38
+	DC.B	$37,$35,$34,$30,$A6,$B9,$B7,$B9
+	DC.B	$BA,$BE,$49,$36,$38,$36,$35,$30
+	DC.B	$A6,$B9,$B8,$BB,$47,$34,$36,$34
+	DC.B	$33,$30,$A5,$B8,$B6,$B8,$B9,$BD
+	DC.B	$48,$35,$37,$34,$A8,$BB,$B9,$BD
+	DC.B	$47,$35,$38,$34,$A8,$BC,$B9,$BB
+	DC.B	$BD,$BE,$BF,$C3,$4E,$3B,$3D,$3B
+	DC.B	$3A,$38,$37,$36,$35,$33,$32,$30
+	DC.B	$A4,$B7,$B5,$B7,$B8,$BD,$47,$34
+	DC.B	$36,$35,$33,$32,$31,$2C,$A3,$BB
+	DC.B	$3F,$2E,$30,$2C,$A1,$B5,$B3,$B5
+	DC.B	$B6,$B7,$B9,$BA,$BC,$BD,$BE,$C0
+	DC.B	$C1,$C2,$C3,$C5,$C6,$C9
+POLY0405D_4END
+
+POLY0405E_1_5
+;FREQ:25568
+	DC.B	$5C,$B9,$CD,$5F,$BB,$5C,$B9,$CD
+	DC.B	$5F,$BB
+POLY0405E_1_5END
+
+POLY0405E_9
+;FREQ:25568
+	DC.B	$5C,$48,$4A,$46,$B9,$CC,$CA,$CC
+	DC.B	$CD,$CE,$CF,$D7,$5F,$4B,$4C,$48
+	DC.B	$BB,$CE,$CC,$D3
+POLY0405E_9END
+
+POLY0509B_0
+;FREQ:20109 (PER:178)
+	DC.B	$46,$43,$41,$40,$03,$10,$BF,$C1
+	DC.B	$C4,$C6,$C7,$FF,$17,$44,$27,$C8
+	DC.B	$CB,$0F,$B4,$2F,$43,$F3,$C0,$CF
+	DC.B	$4C,$44,$42,$08,$4D,$3D,$3C,$AC
+	DC.B	$C0,$10,$43,$BF,$44,$1F,$3A,$3B
+	DC.B	$39,$BD,$40,$FA,$43,$F0,$C7,$3C
+	DC.B	$36,$34,$00,$00,$3C,$F3,$AF,$B5
+	DC.B	$B7,$47,$33,$34,$33,$B0,$B8,$43
+	DC.B	$A3,$20,$06,$3E,$A8,$BA,$48,$C0
+	DC.B	$EF,$33,$34,$D4,$0F,$B3,$BA,$BC
+	DC.B	$40,$47,$1B,$DF,$00,$BF,$4C,$38
+	DC.B	$38,$00,$40,$BB,$BF,$40,$B8,$44
+	DC.B	$37,$C8,$BB,$0C,$B7,$BB,$F0,$4E
+	DC.B	$38,$38,$AD,$BC,$BE,$4E,$AB,$08
+	DC.B	$3F,$30,$B7,$D7,$41,$3D,$32,$3F
+	DC.B	$A8,$FB,$B1,$BF,$C0,$F0,$C4,$C3
+	DC.B	$FF,$FF,$41,$B4,$3B,$C0,$20,$4F
+	DC.B	$3E,$40,$EB,$40,$3C,$FF,$38,$C7
+	DC.B	$EB,$B1,$BD,$BE,$E0,$50,$39,$35
+	DC.B	$B7,$E4,$C3,$BF,$C2,$C3,$52,$B1
+	DC.B	$DF,$EF,$44,$BF,$1F,$40,$40,$3C
+	DC.B	$B3,$C0,$C2,$C4,$3F,$3C,$3F,$3D
+	DC.B	$3E,$D0,$3F,$39,$F0,$4F,$A9,$EB
+	DC.B	$B0,$4D,$3A,$17,$C0,$EF,$B2,$C2
+	DC.B	$C0,$C2,$C4,$52,$3C,$3B,$47,$BF
+	DC.B	$B4,$FF,$BB,$00,$D7,$43,$40,$F7
+	DC.B	$3C,$0F,$3A,$C0,$FF,$B0,$C2,$C0
+	DC.B	$C2,$C4,$CB,$50,$42,$40,$EB,$B7
+	DC.B	$4F,$3C,$D0,$E0,$10,$BE,$CB,$49
+	DC.B	$1F,$3D,$3E,$3C,$B0,$4E,$A9,$C0
+	DC.B	$C0,$4B,$3B,$28,$BB,$F7,$B7,$44
+	DC.B	$17,$C4,$C5,$C2,$C4,$1F,$40,$41
+	DC.B	$20,$F7,$FF,$B0,$40,$BF,$C3,$C6
+	DC.B	$C7,$57,$43,$42,$B7,$CB,$4D,$1F
+	DC.B	$40,$40,$38,$B7,$C1,$51,$DF,$08
+	DC.B	$C3,$17,$28,$BF,$C3,$C9,$4D,$F0
+	DC.B	$48,$40,$3C,$B3,$C1,$C3,$37,$C0
+	DC.B	$FF,$F0,$C6,$DF,$48,$B7,$4F,$41
+	DC.B	$0F,$1F,$C0,$C7,$CB,$00,$06,$48
+	DC.B	$41,$3C,$B7,$C2,$38,$DF,$10,$C5
+	DC.B	$00,$C7,$C7,$EF,$EF,$C3,$13,$1F
+	DC.B	$44,$10,$C7,$C8,$CA,$DF,$20,$CD
+	DC.B	$55,$BC,$DF,$30,$CB,$CC,$CE,$00
+	DC.B	$3F,$49,$48,$BF,$CD,$1F,$C7,$D0
+	DC.B	$D1,$D3,$D4,$EF,$54,$20,$5F,$4B
+	DC.B	$40,$CA,$CF,$FF,$4C,$0F,$C8,$3F
+	DC.B	$DF,$4E,$4C,$49,$30,$3F,$10,$C8
+	DC.B	$CA,$DF,$F7,$4C,$45,$43,$41,$17
+	DC.B	$EB,$42,$B7,$00,$17,$BA,$C2,$C7
+	DC.B	$40,$4B,$EC,$B8,$F7,$40,$B4,$C6
+	DC.B	$C5,$EF,$44,$43,$00,$48,$3E,$DF
+	DC.B	$3C,$3C,$39,$20,$B7,$BB,$47,$37
+	DC.B	$28,$CF,$AC,$3F,$37,$AA,$BE,$DF
+	DC.B	$B3,$4A,$E8,$00,$40,$AD,$C1,$44
+	DC.B	$3F,$BB,$B2,$C1,$3F,$3B,$30,$BB
+	DC.B	$DF,$B3,$C3,$04,$E0,$C7,$EF,$B8
+	DC.B	$17,$42,$F0,$28,$C3,$FF,$41,$42
+	DC.B	$EC,$B8,$C4,$C5,$53,$41,$24,$D0
+	DC.B	$C5,$17,$EC,$4A,$B3,$C4,$CB,$C0
+	DC.B	$06,$4A,$18,$3F,$FF,$34,$BF,$EF
+	DC.B	$B8,$4C,$F8,$2B,$3F,$18,$C8,$C6
+	DC.B	$C5,$DF,$D0,$CC,$FF,$C0,$DB,$00
+	DC.B	$4E,$46,$43,$0F,$E0,$3F,$AF,$C9
+	DC.B	$10,$00,$C7,$55,$43,$B8,$55,$30
+	DC.B	$4D,$18,$BF,$FF,$3D,$3F,$3C,$3B
+	DC.B	$38,$F0,$0F,$C0,$4C,$AB,$BC,$BE
+	DC.B	$BF,$2F,$10,$08,$BF,$40,$0F,$49
+	DC.B	$C0,$C4,$17,$0F,$3D,$C0,$50,$00
+	DC.B	$F4,$BF,$4E,$3A,$AF,$4D,$AC,$30
+	DC.B	$EF,$3C,$F0,$BF,$BF,$C1,$50,$B3
+	DC.B	$C3,$1F,$3E,$CF,$C0,$FF,$40,$E4
+	DC.B	$2F,$08,$4D,$B0,$51,$D4,$51,$3A
+	DC.B	$39,$F0,$1F,$D0,$4D,$34,$AB,$BA
+	DC.B	$BC,$BE,$C1,$C8,$C0,$00,$40,$DF
+	DC.B	$C0,$51,$34,$B9,$C1,$30,$4E,$F0
+	DC.B	$00,$2F,$20,$4C,$3A,$3A,$D0,$13
+	DC.B	$DF,$2F,$AC,$CB,$E0,$50,$39,$38
+	DC.B	$37,$FF,$E0,$AE,$46,$34,$E8,$3C
+	DC.B	$A3,$B8,$42,$A8,$B9,$B9,$BB,$3F
+	DC.B	$37,$36,$38,$20,$20,$B7,$C0,$40
+	DC.B	$36,$33,$A6,$B8,$B9,$C7,$EA,$20
+	DC.B	$C0,$47,$A8,$BE,$BE,$3B,$39,$3B
+	DC.B	$FF,$38,$C0,$48,$EF,$B1,$40,$A7
+	DC.B	$BB,$BD,$C0,$4D,$38,$39,$37,$B0
+	DC.B	$C5,$40,$20,$B7,$B9,$3F,$FF,$36
+	DC.B	$C7,$C0,$BF,$BD,$CD,$30,$BD,$FF
+	DC.B	$B8,$CD,$46,$3E,$C0,$C3,$C1,$00
+	DC.B	$17,$BB,$C5,$C7,$4C,$BE,$C9,$CB
+	DC.B	$D8,$CA,$5D,$C7,$30,$3F
+POLY0509B_0END
+
+POLY0509B_1_5
+;FREQ:25568
+	DC.B	$53,$AA,$C5,$C1,$C4,$C4,$C5,$C6
+	DC.B	$C7,$C9,$CA,$CB,$CC,$CD,$CE,$CF
+	DC.B	$D0,$D2,$D3,$5F,$C0,$D7,$D2,$5F
+	DC.B	$4D,$51,$4E,$4C,$4B,$C0,$CF,$59
+	DC.B	$45,$C0,$5E,$43,$BA,$5B,$42,$46
+	DC.B	$43,$42,$40,$3F,$3E,$3C,$3B,$3A
+	DC.B	$38,$37,$A8,$BC,$B9,$BB,$BC,$BE
+	DC.B	$BF,$C1,$4F,$3C,$3F,$3D,$3B,$B0
+	DC.B	$C0,$BD,$BF,$4F,$3A,$3E,$3B,$3A
+	DC.B	$38,$A8,$4D,$33,$38,$35,$34,$33
+	DC.B	$31,$A2,$46,$2C,$30,$A0,$B5,$B2
+	DC.B	$B5,$3F,$30,$A4,$B9,$B6,$B8,$B9
+	DC.B	$47,$34,$AA,$4B,$33,$37,$35,$34
+	DC.B	$33,$31,$30,$2F,$2E,$2D,$2C,$A0
+	DC.B	$3F,$98,$B3,$AF,$3F,$2B,$2F,$2D
+	DC.B	$2C,$2B,$2A,$28,$99,$3F,$24,$A0
+	DC.B	$AE,$AB,$AD,$AF,$B0,$B2,$B5,$44
+	DC.B	$A0,$BA,$B6,$B9,$BA,$BC,$4B,$37
+	DC.B	$3A,$38,$37,$36,$34,$33,$32,$A2
+	DC.B	$B8,$3F,$2F,$32,$30,$A0,$B6,$B3
+	DC.B	$B5,$45,$30,$34,$32,$31,$A0,$B6
+	DC.B	$B3,$B5,$B7,$B8,$BA,$49,$34,$A8
+	DC.B	$BE,$BB,$4B,$37,$3A,$38,$A8,$BD
+	DC.B	$BA,$BC,$BE,$4D,$39,$3C,$3A,$39
+	DC.B	$38,$36,$35,$34,$32,$A4,$47,$2D
+	DC.B	$32,$30,$2F,$2E,$2C,$A0,$3F,$27
+	DC.B	$2C,$9C,$B1,$AE,$B0,$3F,$2C,$2F
+	DC.B	$2D,$2C,$9C,$B3,$3D,$29,$A0,$B3
+	DC.B	$B0,$B2,$B3,$B6,$47,$31,$34,$32
+	DC.B	$31,$30,$2F,$2E,$2C,$9C,$B3,$AF
+	DC.B	$B1,$B3,$B5,$B6,$B8,$B9,$4B,$34
+	DC.B	$AA,$BE,$4B,$35,$38,$36,$A8,$BD
+	DC.B	$47,$33,$36,$A6,$47,$30,$35,$33
+	DC.B	$32,$30,$30,$2E,$2D,$2C,$2B,$2A
+	DC.B	$29,$28,$27,$9A,$AD,$37,$25,$28
+	DC.B	$98,$3D,$94,$AF,$AC,$3D,$28,$2C
+	DC.B	$2A,$29,$28,$98,$AD,$AB,$AD,$AF
+	DC.B	$B0,$B2,$B4,$43,$2F,$32,$31,$30
+	DC.B	$2E,$2D,$A0,$B3,$3F,$2A,$A0,$43
+	DC.B	$9A,$B6,$B3,$3F,$A0,$BA,$43,$30
+	DC.B	$33,$A4,$B8,$B5,$B7,$B8,$BA,$BC
+	DC.B	$BE,$4E,$A9,$C3,$BF,$4F,$3B,$3E
+	DC.B	$3C,$3B,$3A,$39,$38,$36,$A5,$BC
+	DC.B	$47,$32,$A6,$BC,$B9,$BB,$BC,$BE
+	DC.B	$4E,$AC,$C4,$C0,$C2,$C3,$C5,$55
+	DC.B	$40,$43,$41,$40,$B0,$C4,$C1,$C3
+	DC.B	$C4,$C5,$C7,$C9,$57,$B4,$5D,$42
+	DC.B	$46,$B8,$CA,$C7,$57,$42,$45,$B4
+	DC.B	$59,$3E,$43,$40,$40,$3C,$B0,$4F
+	DC.B	$38,$3C,$39,$A9,$BF,$BC,$BF,$4F
+	DC.B	$38,$AD,$C2,$BF,$4F,$AC,$55,$3A
+	DC.B	$3E,$B0,$C3,$4D,$39,$3D,$3A,$A9
+	DC.B	$C0,$BD,$BF,$C0,$C1,$C3,$C5,$55
+	DC.B	$40,$41,$B2,$C7,$C3,$C5,$C6,$C9
+	DC.B	$57,$43,$46,$44,$41,$B2,$C8,$53
+	DC.B	$B0,$C9,$C4,$C7,$C9,$57,$B4,$CD
+	DC.B	$C9,$CB,$CC,$CE,$CF,$5F,$49,$4C
+	DC.B	$4A,$49,$47,$46,$44,$43,$41,$B1
+	DC.B	$C7,$53,$3D,$B1,$C6,$C4,$53,$B0
+	DC.B	$C9,$C5,$C7,$C8,$CA,$5B,$44,$48
+	DC.B	$45,$44,$43,$41,$40,$3F,$3D,$3C
+	DC.B	$AA,$C1,$BE,$C0,$C1,$C2,$C3,$C5
+	DC.B	$55,$B1,$59,$B0,$CA,$C6,$C8,$CA
+	DC.B	$5A,$44,$47,$45,$44,$42,$41,$40
+	DC.B	$3E,$3C,$AC,$C2,$BF,$C1,$C2,$C3
+	DC.B	$C4,$C6,$C7,$C8,$C9,$CB,$CD,$5E
+	DC.B	$46,$BB,$5F,$43,$B8,$CD,$C9,$CC
+	DC.B	$CC,$CF,$5F,$48,$4C,$49,$48,$47
+	DC.B	$45,$43,$B1,$C8,$C5,$C7,$57,$42
+	DC.B	$45,$43,$41,$40,$3F,$3D,$3C,$3B
+	DC.B	$39,$A8,$BF,$4B,$36,$38,$A8,$BD
+	DC.B	$BB,$4C,$A8,$C1,$BD,$BF,$C0,$C2
+	DC.B	$C3,$55,$3E,$41,$40,$3E,$3D,$3C
+	DC.B	$3A,$39,$37,$A8,$BD,$B9,$BD,$4C
+	DC.B	$A6,$C3,$4D,$A8,$C3,$BF,$C1,$C3
+	DC.B	$55,$3E,$41,$3F,$3E,$3C,$3B,$39
+	DC.B	$A8,$BF,$BB,$BE,$4F,$39,$3C,$3A
+	DC.B	$39,$38,$36,$34,$A5,$49,$A0,$4B
+	DC.B	$30,$34,$32,$30,$A0,$B7,$B4,$46
+	DC.B	$30,$33,$31,$30,$2F,$2D,$9C,$B3
+	DC.B	$B0,$B3,$B4,$B6,$B7,$B8,$BA,$BC
+	DC.B	$BD,$BE,$C1,$4F,$3B,$3E,$3C,$3A
+	DC.B	$AA,$C0,$BC,$BF,$C0,$C1,$C2,$C4
+	DC.B	$C5,$C6,$C7,$C9,$CA,$CB,$CC,$CD
+	DC.B	$CE,$D1,$5F,$4A,$4D,$49,$BA,$CF
+	DC.B	$5C,$46,$BA,$5F,$43,$48,$44,$B5
+	DC.B	$5A,$3E,$B2,$C8,$C5,$C7,$59,$42
+	DC.B	$45,$43,$41,$40,$3D,$AF,$53,$39
+	DC.B	$3D,$3B,$39,$38,$37,$36,$34,$A4
+	DC.B	$BA,$B7,$B9,$49,$A4,$BF,$BC,$4D
+	DC.B	$36,$AA,$C0,$BD,$4F,$39,$3C,$3A
+	DC.B	$39,$38,$37,$35,$A4,$BB,$B7,$BA
+	DC.B	$BB,$BC,$BE,$BF,$51,$39,$B0,$C3
+	DC.B	$C1,$52,$3C,$3F,$3D,$3A,$AC,$C0
+	DC.B	$BD,$BF,$C0,$C3,$53,$3D,$40,$3E
+	DC.B	$3D,$3C,$38,$AA,$4F,$35,$39,$37
+	DC.B	$36,$34,$33,$32,$31,$30,$2F,$2E
+	DC.B	$2D,$2C,$2B,$28,$99,$AF,$AE,$3F
+	DC.B	$29,$2C,$9A,$B1,$AE,$B0,$B2,$B3
+	DC.B	$B5,$B7,$B8,$B9,$BB,$BF,$4E,$38
+	DC.B	$3B,$38,$A8,$BF,$4C,$34,$A9,$BE
+	DC.B	$BB,$BD,$BF,$C1,$51,$3A,$AE,$C4
+	DC.B	$C1,$C3,$54,$3E,$41,$3F,$3E,$3C
+	DC.B	$AA,$C3,$4F,$39,$3C,$3A,$39,$38
+	DC.B	$35,$A6,$BD,$47,$33,$36,$A4,$BC
+	DC.B	$49,$33,$36,$A3,$BB,$46,$32,$35
+	DC.B	$33,$32,$31,$30,$2F,$2E,$2D,$2C
+	DC.B	$2A,$9A,$B0,$AE,$B0,$B1,$B3,$B4
+	DC.B	$B6,$B8,$B9,$BB,$BE,$4E,$37,$3B
+	DC.B	$38,$38,$36,$34,$A3,$BA,$B7,$B9
+	DC.B	$BB,$BC,$BE,$BF,$C0,$C3,$52,$AC
+	DC.B	$C7,$C3,$C7,$57,$40,$43,$41,$40
+	DC.B	$3E,$B0,$C5,$4F,$AB,$C6,$53,$3C
+	DC.B	$40,$AD,$C5,$52,$3B,$3E,$3A,$AA
+	DC.B	$C1,$BE,$C0,$C1,$C3,$55,$3E,$41
+	DC.B	$3F,$3E,$3C,$3B,$3A,$38,$A7,$BF
+	DC.B	$4B,$34,$A8,$BE,$BB,$BD,$BE,$C0
+	DC.B	$51,$3B,$3E,$3C,$38,$AB,$51,$36
+	DC.B	$39,$38,$36,$34,$A4,$BB,$47,$32
+	DC.B	$34,$A3,$BA,$B7,$B9,$BA,$BD,$4D
+	DC.B	$36,$AC,$C0,$BF,$4F,$39,$3B,$AA
+	DC.B	$C0,$BD,$BF,$C1,$51,$AC,$C6,$C2
+	DC.B	$C4,$C6,$C7,$C9,$5A,$43,$46,$43
+	DC.B	$B2,$C9,$C5,$C9,$59,$42,$46,$43
+	DC.B	$40,$B3,$57,$3C,$40,$3E,$3C,$3A
+	DC.B	$A9,$C0,$BD,$BF,$C0,$C2,$C3,$C4
+	DC.B	$C6,$C7,$CB,$58,$B2,$CD,$CA,$5C
+	DC.B	$45,$48,$46,$44,$42,$B1,$CB,$53
+	DC.B	$B0,$C9,$C5,$C7,$CB,$5B,$43,$47
+	DC.B	$44,$40,$B1,$C8,$C4,$C6,$C7,$C8
+	DC.B	$CB,$5B,$B4,$CF,$CB,$CD,$CE,$CF
+	DC.B	$D0,$D3,$63,$4B,$C0,$D5,$60,$BD
+	DC.B	$65,$B9,$D7,$5F,$BA,$D5,$D1,$D3
+	DC.B	$D5,$64,$BD,$D8,$D4,$D6,$D7,$D8
+	DC.B	$D9,$DB,$6C,$54,$56,$C4,$DA,$D7
+	DC.B	$D8,$D9,$DA,$DB,$DC,$DD,$DD,$DF
+	DC.B	$6F,$58,$5C,$59,$57,$55,$53,$52
+	DC.B	$4E,$BE,$D4,$D1,$D3,$D3,$D4,$D7
+	DC.B	$67,$50,$53,$50,$C0,$D5,$D1,$D5
+	DC.B	$64,$4D,$50,$4C,$BC,$D3,$5D,$B8
+	DC.B	$D5,$5F,$4A,$4A,$BA,$D0,$CF,$5D
+	DC.B	$B8,$D3,$CE,$D0,$D1,$D3,$62,$BE
+	DC.B	$68,$4B,$4E,$C0,$D3,$CF,$D3,$63
+	DC.B	$48,$BD,$D5,$5F,$48,$BC,$D2,$CF
+	DC.B	$D3,$62,$4B,$4E,$4C,$48,$B8,$CE
+	DC.B	$CB,$CD,$CE,$CF,$D2,$62,$48,$BD
+	DC.B	$D3,$CF,$D1,$D2,$D3,$D4,$D5,$D6
+	DC.B	$D7,$D8,$68,$C2,$DC,$D8,$DB,$6B
+	DC.B	$54,$56,$C4,$DA,$D6,$D8,$D9,$DA
+	DC.B	$DA,$DB,$DC,$DF,$6D,$C8,$E1,$DD
+	DC.B	$DF,$DF,$E0,$E0,$E2,$73,$5C,$5E
+	DC.B	$5B,$5A,$58,$54,$C4,$DB,$67,$51
+	DC.B	$53,$51,$4F,$4E,$4C,$4B,$49,$47
+	DC.B	$46,$44,$41,$B3,$56,$AC,$C8,$C4
+	DC.B	$C6,$C7,$C8,$CB,$5C,$44,$47,$44
+	DC.B	$B3,$CB,$55,$B0,$CB,$C7,$C9,$CB
+	DC.B	$5C,$45,$48,$42,$B4,$CA,$C7,$C9
+	DC.B	$C9,$CD,$5A,$B7,$61,$44,$46,$B5
+	DC.B	$CC,$C8,$CC,$5C,$45,$48,$44,$B6
+	DC.B	$5B,$3E,$B2,$C8,$C5,$C7,$C8,$C9
+	DC.B	$CB,$CE,$5E,$46,$49,$47,$46,$44
+	DC.B	$43,$41,$40,$AE,$C4,$C3,$54,$3D
+	DC.B	$40,$3C,$AC,$C3,$C0,$C2,$C5,$53
+	DC.B	$AD,$C8,$C7,$57,$40,$43,$41,$40
+	DC.B	$3C,$AC,$C3,$C0,$C2,$C3,$C4,$C5
+	DC.B	$C9,$57,$B0,$CC,$C8,$CA,$CB,$CC
+	DC.B	$CF,$5F,$48,$4B,$48,$44,$B6,$CB
+	DC.B	$C8,$CA,$CB,$CC,$CF,$5F,$48,$48
+	DC.B	$B9,$5F,$43,$47,$45,$44,$42,$40
+	DC.B	$B1,$56,$3B,$3F,$3C,$3B,$3A,$38
+	DC.B	$37,$36,$35,$32,$A1,$BB,$47,$30
+	DC.B	$32,$A1,$B8,$B7,$48,$31,$30,$A5
+	DC.B	$49,$2F,$33,$31,$30,$2E,$2D,$2C
+	DC.B	$2B,$2A,$28,$98,$AF,$AC,$AE,$B0
+	DC.B	$B1,$B3,$B4,$B7,$48,$30,$A4,$BA
+	DC.B	$B7,$B9,$BD,$4D,$36,$39,$35,$A5
+	DC.B	$BC,$B9,$BB,$BC,$BF,$4F,$39,$3C
+	DC.B	$3A,$39,$38,$36,$35,$32,$A2,$BB
+	DC.B	$47,$31,$32,$A3,$49,$2E,$30,$A3
+	DC.B	$47,$2C,$30,$2E,$2C,$9C,$B3,$B0
+	DC.B	$B2,$B4,$B5,$B7,$BB,$48,$A3,$BE
+	DC.B	$BF,$4E,$37,$3A,$38,$37,$35,$34
+	DC.B	$33,$32,$30,$A0,$B6,$B3,$B5,$B7
+	DC.B	$B8,$B9,$BB,$BC,$BF,$50,$39,$3C
+	DC.B	$3A,$39,$38,$36,$35,$34,$33,$30
+	DC.B	$A0,$B7,$B4,$B6,$B8,$BB,$4C,$35
+	DC.B	$36,$A5,$BF,$49,$31,$A8,$4D,$30
+	DC.B	$A5,$BB,$BB,$49,$A4,$BF,$BC,$BE
+	DC.B	$BF,$C3,$53,$3B,$3E,$3C,$38,$A9
+	DC.B	$C0,$BD,$BF,$C0,$C1,$C3,$C4,$C7
+	DC.B	$54,$B3,$5C,$3D,$B2,$C8,$C7,$58
+	DC.B	$41,$44,$42,$40,$3F,$3E,$3C,$3B
+	DC.B	$38,$A8,$BF,$BC,$BE,$BF,$51,$3A
+	DC.B	$3E,$38,$A9,$C3,$4E,$38,$38,$AB
+	DC.B	$4E,$A4,$C0,$BF,$4F,$36,$AA,$C1
+	DC.B	$BF,$4F,$A9,$C4,$C0,$C3,$C3,$C5
+	DC.B	$C6,$CB,$59,$42,$40,$B2,$C9,$C6
+	DC.B	$C8,$C9,$CD,$5C,$45,$48,$44,$B3
+	DC.B	$CA,$CB,$58,$B2,$CD,$C9,$CB,$CC
+	DC.B	$CF,$5F,$48,$4B,$48,$47,$46,$44
+	DC.B	$43,$41,$40,$3F,$3D,$3C,$3B,$38
+	DC.B	$A7,$BE,$BB,$BD,$BF,$4F,$AB,$55
+	DC.B	$38,$AC,$C2,$BF,$C1,$C3,$C5,$52
+	DC.B	$AE,$C9,$C5,$C7,$C8,$CA,$CB,$CF
+	DC.B	$5E,$47,$48,$B6,$CD,$CA,$CC,$CD
+	DC.B	$CE,$CF,$D3,$60,$BF,$64,$B9,$D9
+	DC.B	$61,$4B,$4D,$4B,$4A,$48,$47,$45
+	DC.B	$44,$42,$41,$40,$3C,$AC,$C3,$C0
+	DC.B	$C2,$C7,$56,$3E,$41,$3C,$AD,$C7
+	DC.B	$52,$3C,$3E,$3C,$3B,$3A,$36,$A8
+	DC.B	$4E,$30,$A6,$BC,$BA,$BF,$4E,$37
+	DC.B	$3A,$38,$37,$32,$A3,$BD,$49,$33
+	DC.B	$30,$A3,$BA,$B7,$B9,$BB,$BC,$BD
+	DC.B	$C3,$51,$3A,$38,$AA,$C5,$4F,$39
+	DC.B	$3C,$3A,$39,$38,$34,$A4,$BB,$B8
+	DC.B	$BA,$BC,$BD,$C3,$51,$3A,$3D,$3B
+	DC.B	$3A,$38,$37,$36,$35,$30,$A1,$B8
+	DC.B	$B9,$46,$A3,$4D,$31,$34,$A2,$BA
+	DC.B	$B7,$B9,$BF,$4D,$36,$39,$37,$36
+	DC.B	$34,$30,$A1,$B8,$B6,$B8,$BD,$4C
+	DC.B	$35,$38,$34,$A4,$BB,$B8,$BF,$4C
+	DC.B	$36,$36,$A6,$BD,$BA,$BC,$BF,$4F
+	DC.B	$39,$3C,$3A,$39,$37,$36,$35,$34
+	DC.B	$30,$A3,$44,$9D,$B9,$B5,$B8,$B9
+	DC.B	$BA,$BF,$4E,$34,$A9,$C3,$4E,$38
+	DC.B	$3A,$38,$34,$A7,$4D,$30,$A5,$BB
+	DC.B	$B9,$BD,$4D,$36,$39,$37,$36,$30
+	DC.B	$A3,$BD,$48,$32,$35,$33,$32,$31
+	DC.B	$2C,$9E,$B5,$B2,$B4,$B6,$B7,$BF
+	DC.B	$4B,$34,$38,$36,$31,$A3,$B9,$BB
+	DC.B	$4A,$33,$36,$34,$33,$32,$30,$A3
+	DC.B	$42,$9B,$B7,$B9,$47,$30,$33,$31
+	DC.B	$30,$2C,$9D,$B4,$B2,$B7,$40,$9F
+	DC.B	$BA,$BB,$4A,$33,$36,$34,$33,$32
+	DC.B	$31,$30,$2F,$2E,$2C,$2C,$28,$99
+	DC.B	$B0,$AD,$B3,$42,$2B,$2E,$2D,$2C
+	DC.B	$26,$99,$B3,$3F,$29,$2C,$2A,$29
+	DC.B	$24,$97,$B1,$3C,$26,$26,$97,$AE
+	DC.B	$AC,$AE,$B0,$B1,$B3,$B5,$B6,$B7
+	DC.B	$B9,$BD,$4D,$36,$39,$34,$A5,$BC
+	DC.B	$B9,$BB,$BD,$C3,$50,$39,$38,$A9
+	DC.B	$C1,$BF,$51,$3A,$3A,$AA,$C1,$BE
+	DC.B	$C0,$C1,$C3,$C7,$56,$38,$B1,$C8
+	DC.B	$C7,$57,$40,$43,$40,$AF,$CB,$54
+	DC.B	$3A,$B0,$C6,$C7,$56,$3F,$40,$AE
+	DC.B	$C6,$C3,$C4,$C9,$58,$41,$44,$41
+	DC.B	$40,$3F,$38,$AF,$50,$A7,$C3,$BF
+	DC.B	$C2,$C3,$C4,$CB,$58,$40,$B3,$C8
+	DC.B	$C6,$CB,$5A,$43,$41,$B7,$5A,$3A
+	DC.B	$B2,$C8,$C5,$C7,$C8,$C9,$CA,$CC
+	DC.B	$CD,$D3,$60,$44,$BB,$D0,$CE,$CF
+	DC.B	$D0,$D1,$D2,$D3,$DB,$66,$4C,$C3
+	DC.B	$68,$4C,$50,$4D,$48,$B9,$D7,$5E
+	DC.B	$47,$46,$B7,$CD,$CB,$CC,$CE,$CF
+	DC.B	$D3,$60,$BA,$D4,$D1,$D7,$64,$4D
+	DC.B	$50,$4D,$4C,$46,$B8,$CE,$CC,$CD
+	DC.B	$CE,$CF,$D5,$60,$BA,$D9,$62,$4C
+	DC.B	$4A,$BB,$D2,$CF,$D0,$D1,$D3,$D3
+	DC.B	$D4,$D5,$D6,$D7,$D8,$D9,$DA,$DB
+	DC.B	$DC,$DD,$E3,$70,$56,$CF,$6C,$C3
+	DC.B	$DF,$DB,$DF,$6E,$57,$59,$57,$50
+	DC.B	$C7,$6A,$4F,$52,$4F,$4E,$48,$BD
+	DC.B	$61,$46,$49,$44,$B5,$CB,$C8,$CF
+	DC.B	$5C,$45,$48,$42,$B4,$CF,$58,$42
+	DC.B	$44,$42,$41,$3C,$AE,$C4,$C1,$C3
+	DC.B	$C4,$C6,$C7,$C8,$C9,$CF,$5C,$40
+	DC.B	$B7,$CD,$CA,$CC,$CD,$CE,$CF,$D0
+	DC.B	$D1,$D2,$D3,$DB,$64,$BF,$D8,$D9
+	DC.B	$67,$50,$50,$C0,$D6,$D3,$DB,$66
+	DC.B	$4F,$51,$4F,$4E,$48,$BF,$60,$46
+	DC.B	$49,$47,$45,$44,$42,$41,$40,$3C
+	DC.B	$AC,$C6,$4C,$A9,$C4,$C1,$CB,$50
+	DC.B	$AE,$C8,$C5,$C7,$C8,$C9,$CA,$CB
+	DC.B	$CC,$CD,$CE,$D3,$5C,$BA,$D4,$D0
+	DC.B	$D2,$D3,$D4,$D5,$DB,$68,$50,$53
+	DC.B	$4A,$BE,$D4,$D2,$D3,$D7,$65,$4F
+	DC.B	$51,$4F,$4D,$44,$BF,$61,$45,$49
+	DC.B	$46,$45,$40,$B1,$CF,$56,$40,$42
+	DC.B	$40,$3F,$3E,$3A,$AA,$C1,$BE,$C7
+	DC.B	$52,$38,$B5,$54,$39,$3D,$3B,$34
+	DC.B	$A7,$BE,$BF,$48,$A7,$C1,$BF,$C0
+	DC.B	$C1,$C7,$50,$B5,$59,$3D,$3C,$AE
+	DC.B	$C4,$C1,$C7,$56,$3F,$41,$3A,$AF
+POLY0509B_1_5END
+
+POLY0509C_1_5
+;FREQ:25568
+	DC.B	$51,$3B,$3D,$3C,$3A,$39,$38,$37
+	DC.B	$35,$34,$33,$30,$A2,$B7,$B6,$BA
+	DC.B	$46,$A7,$4A,$A4,$BD,$BE,$4C,$35
+	DC.B	$A9,$BF,$BD,$BF,$C3,$50,$38,$AE
+	DC.B	$C3,$C1,$C3,$C4,$C6,$C7,$CB,$58
+	DC.B	$43,$45,$43,$42,$40,$3F,$3A,$AD
+	DC.B	$C5,$50,$3B,$3D,$3B,$3A,$34,$A8
+	DC.B	$BF,$4B,$36,$38,$34,$A6,$BC,$BB
+	DC.B	$4B,$36,$38,$36,$35,$34,$33,$31
+	DC.B	$30,$A3,$45,$2C,$2F,$2D,$2C,$28
+	DC.B	$9E,$40,$28,$2A,$29,$28,$27,$26
+	DC.B	$22,$96,$AF,$38,$24,$26,$25,$24
+	DC.B	$23,$22,$22,$21,$1E,$91,$A6,$A4
+	DC.B	$AB,$38,$23,$25,$24,$20,$93,$AB
+	DC.B	$37,$22,$22,$94,$AA,$A9,$AE,$3C
+	DC.B	$27,$28,$9B,$38,$96,$B3,$3D,$28
+	DC.B	$2A,$29,$28,$25,$97,$AD,$AE,$3A
+	DC.B	$99,$B2,$B0,$B3,$43,$2D,$2C,$9F
+	DC.B	$B5,$B3,$B5,$B9,$46,$30,$A7,$4A
+	DC.B	$30,$A7,$49,$30,$30,$A2,$B8,$B6
+	DC.B	$B8,$BA,$BD,$4C,$36,$34,$A8,$BE
+	DC.B	$BC,$BE,$BF,$C3,$4E,$AD,$C6,$C3
+	DC.B	$C7,$55,$3F,$41,$3C,$B2,$54,$3B
+	DC.B	$3C,$AF,$51,$36,$AC,$C1,$BF,$C1
+	DC.B	$C2,$C4,$C5,$C6,$CB,$58,$43,$44
+	DC.B	$43,$40,$B5,$54,$3C,$3F,$3D,$3A
+	DC.B	$AB,$C5,$4E,$39,$38,$AB,$C0,$BE
+	DC.B	$C2,$51,$3B,$3D,$3B,$3A,$39,$38
+	DC.B	$36,$35,$34,$33,$2C,$A1,$B7,$B6
+	DC.B	$BB,$46,$A7,$48,$A3,$BD,$BF,$4C
+	DC.B	$34,$A9,$BF,$BD,$BF,$C3,$51,$38
+	DC.B	$AE,$C3,$C1,$C3,$C4,$C6,$C7,$CB
+	DC.B	$58,$43,$45,$43,$42,$40,$3F,$38
+	DC.B	$AE,$C6,$50,$3B,$3D,$3B,$3A,$34
+	DC.B	$A8,$BF,$4A,$36,$38,$32,$A6,$BC
+	DC.B	$BD,$4A,$36,$38,$36,$35,$34,$33
+	DC.B	$31,$2C,$A3,$44,$2D,$2F,$2E,$2C
+	DC.B	$28,$9E,$40,$28,$2A,$29,$28,$27
+	DC.B	$26,$22,$96,$AE,$39,$25,$27,$25
+	DC.B	$24,$23,$23,$22,$21,$1E,$91,$A6
+	DC.B	$A5,$AB,$38,$23,$26,$24,$20,$93
+	DC.B	$AF,$37,$23,$22,$95,$AA,$A9,$AF
+	DC.B	$3C,$27,$26,$9F,$3C,$97,$B3,$3C
+	DC.B	$28,$2A,$29,$28,$24,$98,$AD,$AF
+	DC.B	$3A,$99,$B1,$B0,$B5,$42,$2E,$2C
+	DC.B	$A0,$B5,$B3,$B5,$BD,$48,$30,$A7
+	DC.B	$4A,$2E,$A7,$49,$31,$30,$A3,$B8
+	DC.B	$B6,$B8,$BA,$BF,$4C,$37,$34,$A9
+	DC.B	$BD,$BC,$BE,$BF,$C5,$4C,$AE,$C5
+	DC.B	$C3,$CB,$55,$40,$42,$3D,$B7,$54
+	DC.B	$3B,$3C,$AF,$52,$34,$AC,$C1,$BF
+	DC.B	$C1,$C3,$C4,$C5,$C7,$CB,$58,$43
+	DC.B	$44,$43,$40,$B5,$55,$3D,$3F,$3D
+	DC.B	$38,$AC,$C6,$4E,$3A,$38,$AB,$C0
+	DC.B	$BE,$C3
+POLY0509C_1_5END
+
+POLY0509D_1_5
+;FREQ:25568
+	DC.B	$49,$39,$3B,$3A,$39,$38,$36,$35
+	DC.B	$33,$31,$B0,$3F,$A4,$BB,$B8,$BB
+	DC.B	$3F,$B0,$47,$B0,$BF,$45,$B0,$BF
+	DC.B	$3F,$38,$3A,$38,$37,$34,$B0,$BB
+	DC.B	$B9,$BF,$45,$B0,$47,$36,$36,$AC
+	DC.B	$BD,$BC,$46,$B0,$BF,$BE,$C1,$47
+	DC.B	$3C,$3A,$B2,$4B,$38,$B4,$47,$38
+	DC.B	$39,$38,$B0,$BF,$46,$36,$38,$34
+	DC.B	$B0,$3F,$A9,$3F,$A8,$BD,$BA,$BF
+	DC.B	$47,$36,$B2,$47,$B0,$47,$AC,$49
+	DC.B	$B0,$BF,$BF,$47,$B0,$C2,$C1,$47
+	DC.B	$B8,$C5,$4B,$B4,$4D,$B4,$4B,$B4
+	DC.B	$C7,$4B,$B4,$4B,$B2,$C9,$4D,$40
+	DC.B	$40,$B8,$4F,$3C,$3C,$B4,$C3,$47
+	DC.B	$38,$B8,$4B,$B0,$C3,$C2,$47,$3A
+	DC.B	$B8,$C3,$C1,$C3,$C4,$C5,$C7,$4F
+	DC.B	$B5,$CB,$4F,$B8,$CD,$4F,$B8,$CC
+	DC.B	$CB,$57,$44,$C0,$53,$44,$42,$B8
+	DC.B	$C9,$C8,$CB,$4F,$40,$C0,$CD,$52
+	DC.B	$C0,$CF,$4F,$C0,$57,$40,$C0,$53
+	DC.B	$C0,$53,$B8,$CF,$53,$40,$C0,$4F
+	DC.B	$B8,$4F,$40,$C0,$52,$B4,$CB,$4F
+	DC.B	$41,$43,$40,$B5,$C7,$4B,$B2,$C7
+	DC.B	$C5,$C9,$4F,$C0,$CB,$55,$42,$42
+	DC.B	$B8,$C8,$C6,$C8,$C9,$CD,$53,$C0
+	DC.B	$55,$C0,$57,$BA,$56,$BA,$55,$42
+	DC.B	$BA,$CB,$C9,$CA,$CD,$57,$46,$C0
+	DC.B	$CE,$CE,$57,$46,$47,$C0,$56,$BA
+	DC.B	$55,$BA,$55,$43,$45,$43,$40,$B5
+	DC.B	$C7,$4D,$B6,$4F,$40,$41,$3C,$B8
+	DC.B	$C4,$C2,$C3,$C7,$4D,$B8,$53,$3C
+	DC.B	$B9,$4F,$40,$B8,$4F,$B4,$4F,$3C
+	DC.B	$3D,$B6,$4C,$B4,$4F,$38,$B4,$C3
+	DC.B	$47,$3B,$3D,$3B,$38,$B0,$47,$34
+	DC.B	$AC,$BF,$47,$34,$B0,$BE,$BC,$BF
+	DC.B	$4B,$39,$3B,$38,$B0,$BF,$BF,$49
+	DC.B	$36,$B0,$BF,$47,$38,$38,$B0,$BF
+	DC.B	$47,$38,$36,$B0,$47,$A8,$BF,$45
+	DC.B	$AD,$47,$36,$36,$B0,$47,$34,$B0
+	DC.B	$BC,$BB,$BF,$46,$B0,$BF,$BE,$C0
+	DC.B	$C1,$C2,$C3,$C7,$4F,$40,$40,$B4
+	DC.B	$C6,$C6,$4F,$40,$41,$40,$B6,$4F
+	DC.B	$3A,$B5,$4C,$B2,$C4,$C1,$C3,$C6
+	DC.B	$4E,$B8,$C8,$C7,$4F,$41,$41,$B8
+	DC.B	$CB,$4D,$B4,$CB,$4F,$40,$B6,$C7
+	DC.B	$C7,$4F,$B8,$CD,$4F,$40,$BB,$56
+	DC.B	$40,$B8,$C7,$C7,$4F,$B8,$53,$B4
+	DC.B	$CA,$C9,$55,$43,$45,$43,$40,$B8
+	DC.B	$C7,$C6,$4F,$B8,$4F,$40,$42,$40
+	DC.B	$3F,$3E,$3C,$B2,$C5,$4B,$38,$B0
+	DC.B	$C3,$47,$38,$B4,$4F,$38,$3B,$39
+	DC.B	$38,$34,$B0,$3F,$32,$36,$32,$AA
+	DC.B	$3F,$A8,$BF,$3F,$30,$A8,$BB,$3F
+	DC.B	$A9,$3F,$A9,$47,$32,$32,$AA,$BB
+	DC.B	$3F,$AC,$45,$A8,$BC,$B9,$BB,$BC
+	DC.B	$BF,$4B,$38,$B2,$47,$36,$B1,$4D
+	DC.B	$34,$B0,$BF,$45,$AE,$4D,$34,$B0
+	DC.B	$BF,$46,$B0,$BF,$BF,$49,$B1,$4C
+	DC.B	$B2,$4B,$38,$B4,$4D,$38,$39,$B1
+	DC.B	$4B,$36,$39,$37,$34,$AC,$3F,$AA
+	DC.B	$47,$32,$35,$31,$AC,$45,$30,$30
+	DC.B	$A8,$3F,$A2,$B8,$B7,$3F,$A9,$3F
+	DC.B	$30,$A8,$BA,$BB,$3F,$31,$AD,$44
+	DC.B	$A8,$BF,$3F,$AA,$BE,$BB,$BD,$BF
+POLY0509D_1_5END
+
+POLY09A_0
+;FREQ:22095 (PER:162)
+	DC.B	$57,$00,$50,$3E,$B1,$D3,$49,$BA
+	DC.B	$30,$15,$38,$F7,$00,$4D,$E6,$00
+	DC.B	$17,$3A,$04,$CF,$0F,$FB,$C0,$52
+	DC.B	$AB,$4F,$EF,$DF,$D0,$CF,$05,$3B
+	DC.B	$D7,$EB,$00,$C3,$F7,$EB,$0F,$F5
+	DC.B	$C4,$50,$CF,$CB,$00,$C0,$47,$AF
+	DC.B	$DB,$C0,$FF,$B7,$03,$11,$47,$FB
+	DC.B	$3F,$40,$B1,$4C,$00,$12,$CF,$34
+	DC.B	$FF,$08,$30,$F5,$C7,$C8,$D0,$54
+	DC.B	$05,$E8,$FF,$40,$EB,$0E,$3A,$F8
+	DC.B	$BF,$1A,$49,$3C,$3D,$E7,$D7,$1F
+	DC.B	$FD,$3D,$B8,$FC,$B4,$17,$B8,$3F
+	DC.B	$BF,$48,$3C,$B4,$50,$C8,$CF,$C0
+	DC.B	$FF,$14,$34,$FB,$EF,$00,$2F,$FF
+	DC.B	$3A,$EF,$ED,$E9,$C7,$44,$00,$0C
+	DC.B	$B5,$4C,$36,$EF,$20,$B7,$49,$A8
+	DC.B	$BF,$BD,$4D,$FF,$00,$49,$C0,$F9
+	DC.B	$40,$AC,$10,$C8,$F8,$FF,$B1,$C0
+	DC.B	$F8,$B6,$00,$F7,$EB,$30,$1F,$F5
+	DC.B	$3B,$2F,$20,$F4,$00,$BF,$20,$30
+	DC.B	$3F,$EF,$B2,$16,$30,$BF,$C0,$C5
+	DC.B	$28,$13,$BF,$C8,$D0,$C6,$D7,$C7
+	DC.B	$20,$3F,$AF,$08,$48,$B7,$D8,$58
+	DC.B	$EA,$50,$3A,$B3,$DF,$46,$B9,$20
+	DC.B	$16,$34,$FF,$00,$4C,$E7,$E0,$1F
+	DC.B	$34,$00,$DF,$17,$FF,$B8,$50,$AD
+	DC.B	$51,$F7,$F7,$C0,$DF,$08,$3D,$DF
+	DC.B	$ED,$D0,$C4,$FF,$EF,$0C,$F5,$C5
+	DC.B	$40,$DF,$D7,$F0,$C0,$4C,$AF,$DF
+	DC.B	$B8,$17,$BB,$03,$10,$4F,$FF,$3F
+	DC.B	$3E,$B2,$48,$F4,$10,$DF,$28,$1F
+	DC.B	$F0,$20,$F9,$CB,$CB,$C8,$50,$05
+	DC.B	$E0,$1F,$3D,$EF,$0C,$38,$F0,$BF
+	DC.B	$14,$4B,$3D,$3D,$F3,$DF,$1F,$FF
+	DC.B	$3F,$B4,$FD,$B2,$1F,$B0,$4B,$CF
+	DC.B	$40,$3C,$B4,$4C,$C0,$D7,$BF,$07
+	DC.B	$08,$28,$0F,$FF,$F8,$3B,$1F,$39
+	DC.B	$FF,$EF,$EB,$CF,$40,$E0,$00,$B7
+	DC.B	$4C,$36,$F7,$00,$BB,$48,$A6,$BE
+	DC.B	$BF,$4A,$17,$E8,$46,$B4,$F9,$40
+	DC.B	$A8,$04,$C0,$F7,$06,$B3,$C3,$FB
+	DC.B	$B3,$F0,$17,$EF,$20,$2F,$FB,$3C
+	DC.B	$2F,$10,$F3,$F0,$C3,$20,$24,$45
+	DC.B	$F7,$B3,$08,$24,$CF,$B8,$C7,$20
+	DC.B	$13,$CF,$C4,$D0,$C7,$DF,$CF,$00
+	DC.B	$4F,$B3,$01,$40,$BF,$D0
+POLY09A_0END
+
+POLY09A_1_5
+;FREQ:25568
+	DC.B	$4B,$36,$39,$37,$36,$35,$34,$33
+	DC.B	$31,$A2,$B9,$44,$2E,$31,$A2,$B9
+	DC.B	$3F,$A0,$BB,$B8,$47,$A4,$4D,$30
+	DC.B	$A8,$4A,$A2,$BE,$BA,$BC,$BD,$BF
+	DC.B	$C0,$C3,$4F,$AD,$55,$AB,$C8,$4F
+	DC.B	$B0,$57,$39,$B1,$C7,$4F,$3C,$3D
+	DC.B	$B0,$54,$38,$3C,$AC,$C2,$BF,$C1
+	DC.B	$C2,$C4,$C6,$55,$3E,$41,$40,$B1
+	DC.B	$54,$39,$3C,$B0,$51,$A9,$52,$A8
+	DC.B	$C6,$4E,$38,$AE,$C4,$4E,$AA,$C6
+	DC.B	$C2,$C4,$C5,$C7,$54,$B1,$CC,$C9
+	DC.B	$59,$41,$B6,$CD,$57,$41,$44,$42
+	DC.B	$40,$B2,$55,$AE,$55,$AD,$55,$39
+	DC.B	$B0,$C6,$C2,$C5,$C6,$56,$3E,$B4
+	DC.B	$CA,$53,$B1,$57,$B0,$57,$B0,$CB
+	DC.B	$C7,$C9,$57,$41,$45,$42,$41,$40
+	DC.B	$B1,$54,$AC,$C7,$C3,$C7,$54,$B1
+	DC.B	$58,$B0,$59,$3D,$41,$3F,$3D,$3C
+	DC.B	$AC,$C3,$C1,$4F,$AC,$C6,$C3,$C4
+	DC.B	$C7,$55,$3F,$40,$B2,$C8,$C6,$55
+	DC.B	$3E,$41,$40,$3C,$B0,$C5,$C1,$C3
+	DC.B	$C6,$53,$B0,$CB,$55,$3E,$B4,$C9
+	DC.B	$C6,$C9,$57,$B2,$CE,$57,$B4,$CF
+	DC.B	$58,$B4,$CF,$CB,$CE,$5A,$B8,$D2
+	DC.B	$CE,$D1,$5F,$48,$C0,$5F,$B9,$60
+	DC.B	$B6,$D2,$CF,$5F,$46,$BD,$5F,$44
+	DC.B	$BC,$5F,$42,$B8,$CE,$CB,$5B,$43
+	DC.B	$B8,$CE,$CC,$5A,$B8,$5F,$43,$47
+	DC.B	$45,$43,$B4,$CC,$54,$B3,$59,$3D
+	DC.B	$B5,$57,$3C,$B3,$55,$AD,$CA,$52
+	DC.B	$B0,$57,$B0,$CB,$54,$3E,$40,$B0
+	DC.B	$C7,$C4,$C6,$54,$B1,$5A,$3E,$41
+	DC.B	$B2,$57,$39,$B1,$55,$3A,$3C,$B0
+	DC.B	$4F,$37,$3B,$38,$AA,$4C,$A4,$C1
+	DC.B	$49,$A7,$C2,$BF,$4F,$38,$3A,$AA
+	DC.B	$C2,$4D,$36,$AD,$4F,$34,$AC,$C3
+	DC.B	$4B,$34,$AC,$C1,$BF,$4E,$38,$3A
+	DC.B	$AC,$4F,$33,$AA,$C1,$49,$A8,$C3
+	DC.B	$4C,$A9,$50,$A9,$52,$34,$AD,$4F
+	DC.B	$A8,$4F,$A8,$50,$A8,$C5,$4C,$A9
+	DC.B	$C5,$4E,$38,$B0,$4F,$AB,$53,$36
+	DC.B	$AE,$51,$36,$3A,$38,$34,$A8,$4C
+	DC.B	$31,$35,$33,$32,$31,$2E,$A3,$46
+	DC.B	$2A,$A1,$43,$9D,$46,$2A,$2E,$2A
+	DC.B	$9F,$43,$27,$A0,$B4,$B1,$B4,$43
+	DC.B	$2C,$A1,$B8,$B5,$B7,$B8,$BB,$4A
+	DC.B	$32,$A9,$4D,$32,$36,$33,$A4,$BB
+	DC.B	$B9,$49,$30,$A8,$49,$A2,$BE,$BD
+	DC.B	$48,$A7,$4E,$A5,$C1,$BD,$C0,$C3
+	DC.B	$4E,$AC,$55,$38,$B0,$C4,$C3,$51
+	DC.B	$AC,$C9,$51,$B0,$57,$3C,$3E,$B0
+	DC.B	$C7,$51,$3B,$3E,$3C,$AC,$C3,$C0
+	DC.B	$C3,$52,$3B,$3C,$AF,$51,$A9,$C6
+	DC.B	$4F,$39,$B0,$53,$38,$39,$AB,$C5
+	DC.B	$4C,$AB,$51,$A8,$C4,$C1,$4F,$AB
+	DC.B	$C7,$C5,$52,$AE,$CB,$53,$3E,$40
+	DC.B	$B1,$54,$AE,$56,$38,$B0,$C6,$50
+	DC.B	$AD,$56,$3A,$3E,$3A,$AC,$C3,$4F
+	DC.B	$38,$AC,$C3,$4F,$38,$B0,$4F,$A8
+	DC.B	$C7,$4E,$39,$3C,$38,$AC,$4E,$A7
+	DC.B	$4F,$34,$36,$A8,$BF,$BE,$4A,$A9
+	DC.B	$4F,$A9,$50,$A9,$50,$A8,$51,$36
+	DC.B	$38,$AA,$4D,$A4,$C0,$BD,$4D,$37
+	DC.B	$3A,$36,$A8,$C1,$49,$A6,$C2,$4C
+	DC.B	$36,$39,$37,$36,$35,$34,$33,$30
+	DC.B	$A2,$BD,$45,$2E,$31,$A1,$BB,$43
+	DC.B	$A0,$BB,$B9,$46,$A6,$4D,$30,$A8
+	DC.B	$4A,$A1,$BE,$BA,$BC,$BD,$BF,$C0
+	DC.B	$C5,$50,$AD,$54,$AB,$C9,$50,$AF
+	DC.B	$57,$39,$B0,$C7,$52,$3C,$3C,$B0
+	DC.B	$54,$38,$38,$AC,$C2,$BF,$C1,$C3
+	DC.B	$C4,$C7,$55,$3E,$41,$3E,$B1,$55
+	DC.B	$39,$3C,$AF,$51,$A9,$52,$A8,$C5
+	DC.B	$4F,$38,$AD,$C5,$4E,$AA,$C6,$C1
+	DC.B	$C4,$C5,$C7,$55,$B0,$CC,$C9,$59
+	DC.B	$40,$B6,$CD,$58,$41,$44,$42,$40
+	DC.B	$B2,$54,$AD,$54,$AF,$57,$38,$B0
+	DC.B	$C6,$C3,$C4,$C7,$56,$3C,$B3,$CA
+	DC.B	$53,$B3,$58,$B1,$58,$AF,$CB,$C7
+	DC.B	$C9,$59,$41,$44,$42,$41,$40,$B1
+	DC.B	$53,$AB,$C7,$C3,$C7,$54,$B1,$58
+	DC.B	$B1,$59,$3D,$41,$3F,$3E,$3A,$AC
+	DC.B	$C3,$C1,$4E,$AC,$C6,$C3,$C4,$C7
+	DC.B	$56,$3F,$40,$B1,$C8,$C7,$56,$3E
+	DC.B	$41,$3F,$3C,$AE,$C4,$C1,$C3,$C7
+	DC.B	$52,$B0,$CB,$56,$3C,$B3,$C9,$C6
+	DC.B	$CB,$56,$B2,$CF,$54,$B3,$D2,$58
+	DC.B	$B4,$CF,$CB,$CF,$5B,$B8,$D2,$CE
+	DC.B	$D2,$5F,$46,$BF,$60,$B9,$60,$B7
+	DC.B	$D3,$CF,$5F,$44,$BD,$5F,$42,$BC
+	DC.B	$5F,$40,$B8,$CE,$CD,$5B,$42,$B8
+	DC.B	$CE,$CD,$59,$B7,$60,$43,$47,$45
+	DC.B	$40,$B3,$CD,$54,$B3,$5B,$3C,$B5
+	DC.B	$58,$3C,$B5,$55,$AD,$CB,$52,$B0
+	DC.B	$56,$AD,$CB,$55,$3E,$40,$B0,$C7
+	DC.B	$C4,$C7,$54,$B1,$5A,$3E,$40,$B3
+	DC.B	$57,$39,$B2,$55,$3A,$3C,$AE,$52
+	DC.B	$37,$3B,$38,$AD,$4C,$A4,$C3,$4A
+	DC.B	$A7,$C2,$BF,$4F,$38,$3A,$AA,$C3
+	DC.B	$4E,$34,$AF,$50,$32,$AB,$C2,$4C
+	DC.B	$34,$AA,$C0,$BF,$4F,$38,$38,$AC
+	DC.B	$50,$32,$A9,$C3,$4A,$A7,$C3,$4C
+	DC.B	$AB,$50,$AB,$53,$34,$AE,$4E,$A8
+	DC.B	$50,$A9,$50,$A7,$C4,$4C,$A9,$C5
+	DC.B	$4F,$38,$AF,$50,$AA,$53,$35,$AE
+	DC.B	$51,$36,$3A,$38,$35,$A9,$4C,$31
+	DC.B	$35,$33,$32,$31,$2E,$A2,$46,$29
+	DC.B	$A2,$40,$9D,$46,$2A,$2F,$2A,$9F
+	DC.B	$43,$26,$9D,$B3,$B1,$B6,$43,$2B
+	DC.B	$A1,$B8,$B5,$B7,$B8,$BD,$4A,$32
+	DC.B	$AA,$4D,$32,$36,$31,$A4,$BB,$B9
+	DC.B	$49,$30,$AB,$4A,$A2,$BE,$BD,$4A
+	DC.B	$A7,$4E,$A5,$C1,$BD,$C0,$C5,$50
+	DC.B	$AE,$55,$34,$AE,$C4,$C6,$50,$AD
+	DC.B	$CA,$51,$B0,$58,$3C,$3C,$B0,$C9
+	DC.B	$51,$3B,$3E,$38,$AC,$C3,$C0,$C7
+	DC.B	$52,$3B,$3D,$AF,$50,$A9,$C7,$50
+	DC.B	$38,$B3,$53,$38,$39,$AB,$C3,$4A
+	DC.B	$AD,$50,$A8,$C4,$C2,$4C,$AB,$C6
+	DC.B	$C7,$52,$AE,$CB,$54,$3E,$40,$B3
+	DC.B	$50,$AD,$56,$38,$B0,$C7,$50,$AF
+	DC.B	$56,$3A,$3E,$38,$AC,$C5,$4F,$36
+	DC.B	$AC,$C5,$4F,$36,$AF,$50,$A8,$C6
+	DC.B	$4F,$39,$3C,$38,$AB,$4C,$A7,$50
+	DC.B	$34,$36,$A8,$BE,$BD,$4A,$A9,$4C
+	DC.B	$A9,$50,$A7,$50,$A8,$51,$35,$34
+	DC.B	$AB,$4A,$A4,$C0,$BF,$4E,$37,$3A
+	DC.B	$36,$A8,$C3,$48,$A6,$C3
+POLY09A_1_5END
+
+POLY09B_0
+;FREQ:20109 (PER:178)
+	DC.B	$56,$3D,$1F,$20,$3F,$00,$00,$1F
+	DC.B	$BF,$B2,$3F,$32,$FF,$1F,$E3,$B5
+	DC.B	$FB,$BF,$B8,$40,$BF,$47,$B1,$56
+	DC.B	$3E,$1F,$10,$3F,$F0,$00,$2F,$BF
+	DC.B	$B2,$4F,$32,$0E,$2F,$E7,$B5,$FF
+	DC.B	$BF,$B8,$40,$C3,$4B,$B0
+POLY09B_0END
+
+POLY09B_1_5
+;FREQ:25568
+	DC.B	$52,$3B,$3E,$3C,$3B,$38,$AA,$C3
+	DC.B	$48,$A8,$C3,$BF,$C1,$C3,$50,$AF
+	DC.B	$56,$3A,$B1,$C6,$C3,$C7,$53,$3E
+	DC.B	$40,$B3,$54,$AC,$C7,$C5,$52,$B0
+	DC.B	$CB,$54,$3F,$40,$B1,$CB,$53,$3C
+	DC.B	$B3,$53,$AC,$C9,$50,$B0,$54,$B0
+	DC.B	$57,$3C,$40,$B3,$53,$39,$3D,$3B
+	DC.B	$38,$AA,$C2,$4C,$34,$AB,$C0,$BE
+	DC.B	$C1,$4D,$AD,$52,$AC,$52,$AA,$C5
+	DC.B	$C5,$52,$3B,$3F,$3C,$3B,$38,$AA
+	DC.B	$C3,$48,$A8,$C3,$BF,$C1,$C4,$4F
+	DC.B	$AF,$56,$39,$B0,$C6,$C3,$C6,$54
+	DC.B	$3E,$40,$B3,$53,$AC,$C7,$C5,$52
+	DC.B	$B0,$CD,$55,$3F,$40,$B1,$C9,$53
+	DC.B	$3C,$B3,$52,$AC,$C9,$50,$B1,$56
+	DC.B	$AF,$57,$3C,$3E,$B1,$54,$39,$3D
+	DC.B	$3B,$38,$AA,$C3,$4C,$32,$AB,$C0
+	DC.B	$BE,$C1,$4D,$AC,$52,$AC,$52,$AA
+	DC.B	$C5,$C3
+POLY09B_1_5END
+
+POLY09B_4
+;FREQ:25568
+	DC.B	$46,$37,$38,$37,$36,$34,$33,$18
+	DC.B	$A7,$D7,$40,$31,$32,$31,$30,$2F
+	DC.B	$2E,$10,$A3,$B3,$B2,$B4,$B6,$CF
+	DC.B	$40,$32,$33,$18,$A7,$B8,$B7,$B9
+	DC.B	$BA,$D7,$48,$10,$AF,$BE,$BD,$DF
+	DC.B	$48,$20,$B2,$DF,$48,$20,$B1,$C1
+	DC.B	$C0,$DF,$4C,$3C,$3D,$20,$B2,$DF
+	DC.B	$48,$3A,$3B,$39,$38,$37,$36,$18
+	DC.B	$AA,$D7,$42,$18,$AC,$DF,$41,$34
+	DC.B	$35,$18,$AB,$B9,$B9,$BB,$BC,$DF
+	DC.B	$46,$38,$39,$38,$36,$35,$34,$10
+	DC.B	$AA,$D7,$40,$14,$AB,$B9,$B9,$D7
+	DC.B	$44,$10,$AF,$BD,$BC,$BE,$BF,$DF
+	DC.B	$4C,$3B,$3C,$3A,$39,$10,$AF,$DF
+	DC.B	$44,$37,$38,$10,$AF,$BC,$BB,$DF
+	DC.B	$46,$14,$B2,$BF,$BE,$DF,$49,$3B
+	DC.B	$3B,$18,$B2,$DF,$48,$20,$AF,$DF
+	DC.B	$48,$39,$39,$20,$AF,$DF,$45,$18
+	DC.B	$AF,$DF
+POLY09B_4END
+
+POLY09C_1_5
+;FREQ:25568
+	DC.B	$47,$32,$34,$A5,$49,$A1,$BD,$47
+	DC.B	$32,$34,$A5,$49,$A1,$BD
+POLY09C_1_5END
+
+POLY09C_4
+;FREQ:25568
+	DC.B	$49,$33,$37,$35,$34,$32,$A3,$BA
+	DC.B	$46,$30,$A4,$BB,$B8,$BB
+POLY09C_4END
+
+POLY0517_0
+;FREQ:26128 (PER:137)
+	INCBIN	A0517POLYD11_27117HZ
+POLY0517_0END
+
+POLY17_0
+;FREQ:27117 (PER:132)
+	INCBIN	A17POLY0_27117HZ
+POLY17_0END
+

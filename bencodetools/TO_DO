@@ -1,0 +1,2 @@
+* bencode.py: Implement max recursion level for bdecode
+* Include typevalidator into PyPI

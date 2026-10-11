@@ -1,0 +1,63 @@
+Short:        EaglePlayer "Quartet PSG" external replayer
+Author:       Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      3
+Type:         mus/play
+Replaces:     mus/play/EP_QuartetPSG.lha
+Architecture: m68k-amigaos
+
+This is a new version of "Quartet PSG" module replayer for EaglePlayer 1.54/2.00+.
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- Balance
+- ModuleInfo
+- Volume
+- SongEnd
+- SubSong
+- LoadFast
+
+Version 2
+
+- added support for second YM2149 emulation routine
+- added Config (requires Kickstart V37+)
+
+Version 3
+
+- fixed emulation code
+
+Notes:
+
+1. This player plays synthetical (no external samples) songs created with
+   the Atari ST version of the "Quartet" editor from Illusions/Microdeal.
+
+2. This soundformat was created by Rob Povey & Kevin Cowtan for the Atari ST.
+   Synthetical version perhaps was created and mostly (only ?) used by Steve
+   Wetherill from Eldritch The Cat.
+
+3. This player uses Atari ST soundchip emulators written by Jochen Hippel
+   and meynaf.
+
+4. This version of the "Quartet PSG" player is configurable via the EP
+   player manager. Two ("Mad Max" and "meynaf") different YM2149 emulation
+   routines are available, you can choose between them. The default set
+   is "Mad Max" emulation. The configuration will be saved to either the
+   "EnvArc:EaglePlayer/" and/or "Configs/" directories. If neither of these
+   directories exist the configuration will not be saved.
+
+5. Songs created with the standard (with external samples) version of the
+   "Quartet" editor can be played with "Quartet ST" player (EP_QuartetST.lha).
+
+6. You can get the latest versions of Wanted Team products from:
+
+   https://exotica.org.uk
+
+Special greetings go to:
+
+- Jochen Hippel for Atari ST soundchip emulator
+- Peter Kunath for DMA waiting routine
+- Phil "meynaf" G. for Atari ST soundchip emulator

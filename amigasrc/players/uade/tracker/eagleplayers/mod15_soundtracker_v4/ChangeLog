@@ -1,0 +1,3 @@
+2025-05-01
+- vasm support and makefile added
+- disabled mod_check.s usage, as it no longer compiles with this and amifilemagic has already done the checks

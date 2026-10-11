@@ -1,0 +1,32 @@
+
+Archive name        Size     Date   Std. Req.   AMP  Format name
+                                    ver.  DT    ver.
+                                         ver.
+EP_AMComposer.lha   5789 20-03-2000 v1.2 2.27  v2.0  A.M. Composer 1.2
+EP_BennDaglish.lha  5012 29-03-1999 v1.1 2.27   N/A  Benn Daglish
+EP_DaveLowe.lha     3066 20-08-1999 v1.0 2.32   N/A  Dave Lowe
+EP_DynamicSynt.lha  3987 16-04-2000 v1.0 2.32   N/A  Dynamic Synthesizer 1.34
+EP_JasonBrooke.lha  4588 07-01-2000 v1.0 2.32   N/A  Jason Brooke
+EP_JasonPageN.lha   8142 20-02-1999 v1.2 2.27   N/A  Jason Page New
+EP_JasonPageO.lha   4435 11-07-1999 v1.1 2.27   N/A  Jason Page Old
+EP_LME.lha          3674 10-06-1999 v1.0 2.27   N/A  Leggless Music Editor
+EP_MarkCooksey.lha  5073 11-04-2000 v1.0 2.32   N/A  Mark Cooksey
+EP_MMDC.lha         5125 13-05-2000 v1.0 2.27   N/A  MED packer
+EP_MWalker.lha	    4408 30-12-1999 v1.0 2.32   N/A  Martin Walker
+EP_Mugician.lha     6732 09-08-1999 v1.0 2.27   N/A  Mugician
+EP_Mugician2.lha    8526 22-07-1999 v1.0 2.27   N/A  Mugician II
+EP_PaulShields.lha  3594 30-09-1999 v1.0 2.27   N/A  Paul Shields
+EP_PVP.lha          4464 29-06-2000 v1.0 2.27   N/A  Peter Verswyvelen Packer
+EP_RJosephPlay.lha  5316 28-12-1999 v1.0 2.27   N/A  Richard Joseph Player 1.7A
+EP_RobHubbard.lha   6872 10-09-1999 v1.3 2.32  v2.0  Rob Hubbard
+EP_RobHubbardO.lha  2801 20-09-1999 v1.0 2.32   N/A  Rob Hubbard Old
+EP_SConnolly.lha    4601 29-10-1999 v1.1 2.32   N/A  Sean Connolly (EMS 3.01/3.18/5.xx)
+EP_SeanConran.lha   3503 15-01-2000 v1.1 2.32   N/A  Sean Conran
+EP_SoundImages.lha  5173 06-06-2000 v1.1 2.32   N/A  Sound Images (1 & 2)
+EP_Soundcontr.lha  13251 19-03-2000 v1.1 2.27  v2.0  Soundcontrol 3.0/3.2/4.0/5.0
+EP_SynthDream.lha   6776 04-05-2000 v1.0 2.27   N/A  Synth Dream
+EP_SynthPack.lha    ---- 20-06-2000 v1.1 2.27   N/A  Synth Pack
+EP_TFMX.lha         6827 07-09-1999 v1.1 2.27   N/A  TFMX 1.0-1.6
+EP_TFMXPro.lha     17670 28-04-2000 v1.0 2.27   N/A  TFMX Pro 1.0-2.2
+EP_THermann.lha     5508 26-05-2000 v1.0 2.32   N/A  Thomas Hermann
+EP_UniqueDevel.lha  7457 17-07-2000 v1.0 2.27   N/A  Unique Development

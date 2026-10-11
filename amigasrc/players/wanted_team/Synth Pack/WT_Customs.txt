@@ -1,0 +1,11 @@
+
+Archive name         Size  Ver. Module name
+
+BlueAngel69.lha     46257   2   Blue Angel 69 (c) 1989 by Magic Bytes
+CriticalsPromo.lha  31409   1   Critical's "Promotion" (1990 year)
+DoubleDragon2.lha    4534   2   Double Dragon II (c) 1989 by Binary Design/Virgin
+Gluecksrad.lha      44217   1   Gluecksrad (c) 1991 (?) by GameTEK
+PinkPanther.lha     39274   1   Pink Panther (c) 1988 by reLINE/Magic Bytes
+SuperTetris.lha     85594   1   Super Tetris (c) 1992 by Spectrum HoloByte/Microprose
+TetraQuest.lha       6237   1   Tetra Quest (c) 1988 by Microdeal
+WCF_intro.lha       59228   1   World Cracking Federation intro (1988 year)

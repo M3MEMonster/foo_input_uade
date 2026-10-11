@@ -1,0 +1,98 @@
+Short:        EaglePlayer "TFMX 7V" external player
+Author:       Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      4
+Type:         mus/play
+Replaces:     mus/play/EP_TFMX7V.lha
+Architecture: m68k-amigaos
+
+This is a new version of the different external "TFMX 7V" module player
+for EaglePlayer 1.54/2.00+. It's a player for all known "TFMX 7V" modules.
+
+Version 1
+
+Features:
+
+- Analyzer
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- SubSong
+- Balance
+- ModuleInfo with Position Counter
+- Volume
+- SongEnd
+- PatternJump
+- Save
+- Config (requires Kickstart V37+)
+- extended mixing routine up to 28 kHz, original replay had a 22 kHz limit
+- capable of finding the author's name with the EP FindAuthor routine
+- as a bonus, attached is an EagleRipper for TFMX modules (all formats)
+
+Version 2
+
+- fixed the Config routine, now the Workbench screen is correctly unlocked
+  (Thanks to Luca 'Hexaae' Longone and 'Agony')
+
+Version 3
+
+- loading configuration from "Configs/" directory is now fixed
+- highly optimised mixing routine, now 21kHz works for EP1.54 on MC68000
+- player now using over 8KB memory less
+
+Version 4
+
+- "over the top" optimalisation, now 22kHz works for EP1.54 on MC68000,
+  finally OS friendly mixing routine is fastest than original Mad Max version
+
+Notes:
+
+1. The "TFMX 7V" (aka The Final Musicsystem eXtended) replay is the second
+   Amiga seven voices soundformat, which uses Jochen Hippel's mixing
+   routine. This soundformat was used only by: Chris Huelsbeck, Rudolf
+   Stember and Jon Pickard.
+
+2. This version of the "TFMX 7V" player is configurable via the EP player
+   manager. You can set the mixing rate for the mixing channels (4th, 5th,
+   6th and 7th) to any integer value from 1 to 28 kHz via a slider gadget.
+   The default mixing rate is 16 kHz and higher rates are only recommended
+   for fast CPU's (MC68020+). The configuration will be saved to the
+   "EnvArc:EaglePlayer/" and/or "Configs/" directories. If none of these
+   directories exist then the configuration can not be saved.
+
+3. If you have a good (i.e. not damaged) mdat file from the intro music
+   (seven voices version) from the game "Das Schwarze Auge" (aka "Realms
+   of Arkania: Blade of Destiny"), please contact Wanted Team.
+
+4. ModuleInfo works/looks better for EaglePlayer 1.54 because EaglePlayer
+   2.00+ doesn't refresh the ModuleInfo screen.
+
+5. Only for EP 1.54 users: (still the best Amiga modules player ever :-) )
+   "List of Samples" and "Number of Samples" are actually "List of
+   Instruments" and "Number of Instruments".
+
+6. For ripping sample files with the attached ripper the data file (mdat),
+   sample file (smpl), and initialized (!!!) replay file (tfmx.obj) must all
+   be stored inside the loaded file (which should be a file containing Chip
+   RAM that was saved to disk). You can save Chip RAM with Action Replay,
+   WHDload, JST, ChipSaver, Exotic Ripper, Thrill Kill, HrtMon or some other
+   Amiga monitor. Also, remember that sometimes more than one mdat file can
+   exist inside saved Chip RAM (for example in the game "Apidya"). You have
+   to choose the right one or save all available mdat files if you want to rip
+   the correct smpl file. Furthermore, sometimes more than one initialized
+   replay exists inside saved Chip RAM. In this case you have to clear the
+   first replay if wrong samples are saved. Also note that in "Pass 2" mode
+   you can rip some protected (no header) TFMX modules, for example, the
+   "Hard'N'Heavy" songs, the "Turrican 2" loading tune and the "Apidya"
+   loading tune.
+
+7. You can get the latest versions of Wanted Team products from:
+
+   https://exotica.org.uk
+
+Special greetings go to:
+
+- Philip 'Pepto' Timmermann for support
+- Jan Krolzig for betatesting
+- Codetapper for help with the Config routine
+- Chris Huelsbeck
+- Rudolf Stember
+- Phil "meynaf" G. for help

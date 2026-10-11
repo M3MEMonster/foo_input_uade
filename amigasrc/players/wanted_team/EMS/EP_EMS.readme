@@ -1,0 +1,47 @@
+Short:    EaglePlayer "Editeur Musical Sequentiel" external replayer
+Author:   Wanted Team
+Uploader: Don Adan <DonAdan@wp.pl>
+Version:  1
+Type:     mus/play
+
+This is a different version of the external "Editeur Musical Sequentiel"
+replay for EaglePlayer 1.54/2.00+. It's a player for all known "Editeur
+Musical Sequentiel" modules.
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- PatternJump
+- Balance
+- ModuleInfo with Position Counter
+- Volume
+- SongEnd
+- Save
+- PatternScroll
+- as a bonus, an EagleRipper for Editeur Musical Sequentiel modules is included
+- special Amplifier version (EP 2.00+ only)
+
+Notes:
+
+1. This version of the "Editeur Musical Sequentiel" player was based
+   on the latest EMS V1.24 source code.
+
+2. If you have Ringard' Production demos called "Gameboy" and "Papillon",
+   please contact the Wanted Team.
+
+3. You can choose your preferred player version for use with EP 2.00+.
+
+4. You can get the latest versions of Wanted Team products from:
+
+   http://amiga.emucamp.com/wt/wt.html
+
+Special greetings go to
+
+- Thomas Pimmel for help
+- Promax for help and inspiration
+
+Merry Christmas and Happy New Year 2006 for all Amiga users!!!

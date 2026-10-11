@@ -1,0 +1,56 @@
+Short:        EaglePlayer "TCB Tracker" external player
+Author:       Phil "meynaf" G. & Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      3
+Type:         mus/play
+Replaces:     mus/play/EP_TCBTracker.lha
+Architecture: m68k-amigaos
+
+This is a updated version of the external "TCB Tracker" module player
+for EaglePlayer 1.54/2.00+.
+
+Version 1
+
+- written by meynaf for DeliTracker
+
+Version 2
+
+Features:
+
+- converted to work with EaglePlayer
+- some changes/fixes
+- added Analyzer
+- added Balance
+- added ModuleInfo with Position Counter
+- added Volume
+- added Voices
+- added PatternScroll
+- added special Amplifier version (EP 2.00+ only)
+- as a bonus, attached is NotePlayer version for DeliTracker
+
+Version 3
+
+- some changes/fixes (?)
+
+Notes:
+
+1. This soundformat was created by Anders 'AN Cool' Nilsson for
+   the Atari ST and the replayer was ported to the Amiga by meynaf.
+
+2. You can choose your preferred player version for use with EP 2.00+.
+
+3. This soundformat was used on the Atari ST by famous musician like
+   Richard Joseph for example in "Cannon Fodder" game.
+
+4. NotePlayer version passes the maximum frequency back to DT, so that
+   it will always play correctly regardless of screen mode.
+
+5. You can get the latest versions of Wanted Team products from:
+
+   http://wt.exotica.org.uk
+
+Special greetings go to:
+
+- Phil "meynaf" G. for help
+- Jan Krolzig for betatesting
+- Peter Kunath for DMA waiting routine

@@ -1,0 +1,36 @@
+Short:        EaglePlayer "NTSP-system" external player
+Author:       Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      2
+Type:         mus/play
+Replaces:     mus/play/EP_NTSP-system.lha
+Architecture: m68k-amigaos
+
+This is a new version of external "NTSP-system" replay for EaglePlayer 1.54/2.00+.
+
+Version 1
+
+Features:
+
+- ModuleInfo
+- Volume
+- SongEnd
+- LoadFast
+- Duration (+/- 1sec)
+- Save
+- as a bonus, an EagleRipper for "NTSP-system" music is included
+
+Version 2
+
+- removed Volume support
+- added pseudo 14-bit playback
+
+Notes:
+
+1. This player plays music compressed using the "NTSP-system" developed by
+   Rune Stensland (Skjeggspir/Contraz) & Nightraver/Contraz, for example
+   music from "Dark Helmets" demo by Spaceballs.
+
+2. You can get the latest versions of Wanted Team products from:
+
+   https://exotica.org.uk

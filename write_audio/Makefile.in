@@ -1,0 +1,31 @@
+CXX = {NATIVECXX}
+# TODO: Fix command substition for pkg-config
+CXXFLAGS = -W -Wall -O2 -g -std=c++11 {ARCHFLAGS} {MARCH_FLAGS} $$(pkg-config --cflags sdl2)
+LDFLAGS = -lm $$(pkg-config --libs sdl2)
+EXES = write_audio
+OBJECTS = main.o uadegl.o util.o sdl_mode.o
+
+all:	$(EXES)
+
+write_audio:    $(OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJECTS) $(LDFLAGS)
+
+%.o: %.cc
+	$(CXX) $(CXXFLAGS) -c $<
+
+uadegl.o:	uadegl.cc uadegl.h
+sdl_mode.o:	sdl_mode.cc sdl_mode.h
+util.o: util.cc util.h
+main.o:	main.cc main.h
+
+benchmark_avx2: benchmark_avx2.cc
+	$(CXX) $(CXXFLAGS) -o $@ $< uadegl.cc
+
+clean:
+	rm -f $(EXES) *.o
+
+check:	all
+
+installcheck:	check
+
+distclean:	clean

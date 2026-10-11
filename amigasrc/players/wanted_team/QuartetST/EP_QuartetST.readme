@@ -1,0 +1,71 @@
+Short:        EaglePlayer "Quartet ST" external replayer
+Author:       Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      3
+Type:         mus/play
+Replaces:     mus/play/EP_QuartetST.lha
+Architecture: m68k-amigaos
+
+This is a new version of "Quartet ST" module replayer for EaglePlayer 1.54/2.00+.
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- Balance
+- ModuleInfo with Position Counter
+- Volume
+- SongEnd
+
+Version 2
+
+- fixed song size calc routine
+
+Version 3
+
+- downsampling samples for 200Hz mods
+- as a bonus, attached is NotePlayer version for DeliTracker
+
+Notes:
+
+1. This player plays songs created with the Atari ST version of the "Quartet"
+   editor from Illusions/Microdeal.
+
+2  Songs created with the synthetic (no external samples) version of the
+   "Quartet" editor can be played with "Quartet PSG" player (EP_QuartetPSG.lha).
+
+3. This soundformat was created by Rob Povey & Kevin Cowtan for the Atari ST
+   and the replayer was ported to the Amiga by Steve Wetherill.
+
+4. Default file prefixes for:
+
+   Songdata - QTS. (for example: QTS.Gazza2)
+   Samples  - SMP. (for example: SMP.Gazza2)
+
+   You can use also "SMP.set" for the sample file name.
+
+5. Almost all "Quartet ST" modules run at 200 Hz, and if the module uses
+   a different speed (for example modules from "Ooh Crickey Wot A Scorcher"
+   demo runs at 50 Hz), you must add 4 bytes at the 12 byte offset of
+   songdata and set the new speed in Hz. For example:
+
+   WT                  - ID in ascii
+   $0032               - Hz value in hexadecimal
+
+6. This soundformat was used on the Atari ST by famous musicians like Richard
+   Joseph, Martin Walker, Steve Wetherill and David Whittaker.
+
+7. NotePlayer version passes the maximum frequency back to DT, so that
+   it will always play correctly regardless of screen mode.
+
+8. You can get the latest versions of Wanted Team products from:
+
+   https://exotica.org.uk
+
+Special greetings go to:
+
+- Phil "meynaf" G. for help and idea
+- Jan Krolzig for betatesting

@@ -1,0 +1,6 @@
+* RB_REMOVE(name, tree, elm) can be dangerous because it returns elm, not NULL,
+  when elm is not in the tree. The expected behaviour is to return NULL when
+  elm is not in the tree. Maybe create RB_REMOVE_SAFE(name, tree, elm)?
+* Document include/ccul/digraph.h with examples.
+* Create readthedocs.io documentation.
+* Iterator tools: power set, permutations

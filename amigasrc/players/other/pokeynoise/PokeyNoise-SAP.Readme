@@ -1,0 +1,25 @@
+Short:        A music format - PN-PokeyNoise.
+Type:         mus/misc
+Author:       achim.haertel@e-technik.tu-chemnitz.de (Achim Haertel)
+Architecture: m68k-amigaos
+
+---
+
+Deliplayer included
+Freeware
+Sourcecode included
+Version 0.25
+
+Thanks to Don Adan for improving the soundplaying
+
+Note: The Deliplayer SFX recognizes sometimes PokeyNoise modules as SFX
+and must be removed temporarily with the player management
+
+---
+
+Pokey is the soundchip found in the 8-bit Atari series of computers
+- 400/800/XL/XE. The PokeyNoise DeliPlayer was written by Achim Haertel
+in 1996 and never finished. The fileformat for these tunes is abit like
+the old PlaySID format with an icon for each music file. Supports now
+also SAP files type C, B and M (80% of ASMA collection) and includes a
+music top list.

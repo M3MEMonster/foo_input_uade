@@ -1,0 +1,66 @@
+Short:    EaglePlayer "Musicline 8V" external replayer
+Author:   John Carehag & Wanted Team
+Uploader: Don Adan <DonAdan@wp.pl>
+Version:  1
+Type:     mus/play
+
+This is a different version of the external "Musicline 8V" replay for
+EaglePlayer 1.54/2.00+.
+
+Version 1
+
+Features:
+
+- Analyzer
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- Balance
+- ModuleInfo with Position Counter
+- Volume
+- SongEnd
+- SubSong
+- LoadFast
+- Config (requires Kickstart V37+)
+
+Notes:
+
+1. The "Musicline" soundformat was created by Conny Cyréus, Christian Cyréus,
+   John Carehag and Jimmy Fredriksson. For more information, visit:
+
+   http://www.musicline.org
+
+2. This version of the "Musicline 8V" player is configurable via the EP player
+   manager. You can set the channels mixing rate to any integer value from
+   1 to 28kHz via a slider gadget. The default mixing rate is 5kHz (poor
+   quality), higher rates are only recommended for fast CPUs (MC68020+).
+   The original replay always used a mixing rate of 28.4kHz, if you select
+   28kHz then 28.4kHz will be the mixing rate used by the player.
+   The configuration will be saved to the "EnvArc:EaglePlayer/" and/or
+   the "Configs/" directories. If neither of these directories exist then
+   the configuration can not be saved.
+
+3. This player will only play/recognise Musicline 8-voice tunes!!!
+   For Musicline 4-voice songs use the "Musicline 4V" player (EP_Musicline4V.lha).
+
+4. The loaded module must always be at least as many bytes long as the
+   calculated size. This is why some modules will give you an error
+   with this player.
+
+5. If a module contains both 8-voice and 4-voice songs, it's better to disable
+   the "Musicline 4V" player in the EP Manager menu due to double recognition
+   problems.
+
+6. ModuleInfo works/looks better for EaglePlayer 1.54 because EaglePlayer
+   2.00+ doesn't refresh the ModuleInfo screen.
+
+7. You can get the latest versions of Wanted Team products from:
+
+   http://amiga.emucamp.com/wt/wt.html
+
+Special greetings go to
+
+- John Carehag for help
+- Jean-Charles Meyrignac for help
+- Codetapper for help with the Config routine
+- Peter Kunath for help
+- Jan Krolzig for betatesting
+- Jason Skelly for betatesting

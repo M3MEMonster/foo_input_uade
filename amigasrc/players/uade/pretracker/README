@@ -1,0 +1,9 @@
+UADE/Delitracker player source is copied from rePlayer project, (c) Arnaud Neny, licensed under LGPL.
+Link: https://github.com/arnaud-neny/rePlayer/tree/6f410a75f42204c12b073b592313190fa337a212/source/Replays/UADE/players/PreTracker
+
+PreTracker replay code (pretracker.bin) copied from PreTracker 1.5 distribution, (c) Pink/aBYSs.
+Link: https://www.abyss-online.de/static/download/aYS_PreTracker_1_5.zip
+
+Fixes to original version:
+- added speed_hack to eagleplayer.conf (some tunes won't play without it)
+- fixed max subsong reported -1 when there is only 1 subsong

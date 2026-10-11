@@ -1,0 +1,6 @@
+build-job:
+  stage: build
+  script:
+    - ./configure
+    - make -j $(nproc)
+    - make test

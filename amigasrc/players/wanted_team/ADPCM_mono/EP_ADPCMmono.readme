@@ -1,0 +1,43 @@
+Short:        EaglePlayer "ADPCM mono" external player
+Author:       MCoder, Meynaf, Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      2
+Type:         mus/play
+Replaces:     mus/play/EP_ADPCMmono.lha
+Architecture: m68k-amigaos
+
+This is a new version of external "ADPCM mono" replay for EaglePlayer 1.54/2.00+.
+
+Version 1
+
+Features:
+
+- ModuleInfo
+- Volume
+- SongEnd
+- LoadFast
+- Duration (+/- 1sec)
+
+Version 2
+
+- fixed init bug
+- removed Volume support
+- added pseudo 14-bit playback
+
+Notes:
+
+1. This player plays music compressed using ADPCM (Adaptative Delta Pulse Code
+   Modulation) mono method, for example music from "Lapsuus" demo by Mature
+   Furk.
+
+2. For playing ADPCM mono files, the name of loaded file must contains
+   ".ADPCM" suffix.
+
+3. You can get the latest versions of Wanted Team products from:
+
+   https://exotica.org.uk
+
+Special greetings go to:
+
+- Jean-Charles Meyrignac
+- Philippe Guichardon

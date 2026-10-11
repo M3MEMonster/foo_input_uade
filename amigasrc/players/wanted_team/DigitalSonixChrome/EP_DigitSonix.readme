@@ -1,0 +1,37 @@
+Short:    EaglePlayer "Digital Sonix & Chrome" external replayer
+Author:   Wanted Team
+Uploader: Don Adan <DonAdan@wp.pl>
+Version:  1
+Type:     mus/play
+
+This is a new external "Digital Sonix & Chrome" replay for EaglePlayer
+1.54/2.00+. It's a player for all known "Digital Sonix & Chrome" modules.
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- Balance
+- ModuleInfo with Position Counter
+- Volume
+- SongEnd
+- SubSong
+
+Notes:
+
+1. This soundformat was used in "Dragon's Breath" game only (?).
+
+2. If you have, or know of, unsupported "Digital Sonix & Chrome" modules
+   please contact Wanted Team.
+
+3. You can get the latest versions of Wanted Team products from:
+
+   http://amiga.emucamp.com/wt/wt.html
+
+Special greetings go to
+
+- Bernd Gmeineder for the inspiration and support
+- Jan Krolzig for betatesting

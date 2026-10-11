@@ -1,0 +1,103 @@
+Short:    EaglePlayer "NoiseTracker" external replayer
+Author:   Wanted Team
+Uploader: Don Adan <DonAdan@wp.pl>
+Version:  4
+Type:     mus/play
+Replaces: mus/play/EP_NoiseTrack.lha
+
+This is a new version of a different external "NoiseTracker" replay for
+EaglePlayer 1.54/2.00+.
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- PatternJump
+- Balance
+- ModuleInfo with Position Counter
+- Volume
+- SongEnd
+- Save
+- capable of finding the author's name with the EP FindAuthor routine
+- PatternScroll
+- as a bonus, an EagleRipper for NoiseTracker modules from the music disk
+  "His Master's Noise" is included
+
+Version 2
+
+- added support for SoundTracker (15 samples) modules
+- added an Amplifier version (EP 2.00+ only)
+
+Version 3
+
+- some fixes
+- added Config (requires Kickstart V37+)
+
+Version 4
+
+- fixed a bug in the recognition routine, it now works for Soundtracker
+  (15 samples) modules which use all 128 song positions
+- extended Config
+- added real support for The Ultimate Soundtracker modules, now replay
+  can handle both the arpeggio and portamento commands correctly (?)
+
+Notes:
+
+1. In order to use this NoiseTracker player you must first disable the
+   internal ProTracker player in the EaglePlayer manager menu. For
+   playing SoundTracker (15 samples) modules, you must also disable
+   EaglePlayer's internal OLDSoundTracker player.
+
+2. This player plays only NoiseTracker mods with the "M&K!" ID, if you
+   have NoiseTracker modules with different ID's, you can change this, but
+   they must really be NoiseTracker modules; ProTracker modules can and
+   will be badly played.
+
+3. This player uses the WaitAudioDMA function so you can change the wait
+   mode in the EP Timing submenu and set the correct values for your
+   particular Amiga CPU and/or screen mode.
+
+4. This version of the NoiseTracker player is configurable via the EP player
+   manager. You can set how the D command is handled for Soundtracker
+   (15 samples) songs or choose how the replay handles 1 (arpeggio)
+   and 2 (portamento) commands for the The Ultimate Soundtracker mods.
+   The first (default) mode is "Pattern Break" which  works correctly
+   with songs created in later versions of Soundtracker. The second mode
+   is "Volume Slide", which works correctly with older Soundtracker songs,
+   e.g the "Blood Money" title song. The third mode "Ultimate ST" is
+   recommended to hear Soundtracker modules created with "The Ultimate 
+   Soundtracker" (the first Soundtracker editor) by Karsten Obarski, 
+   e.g. "Oil Imperium", "Future Tank", "Detector", etc. The configuration 
+   will be saved to the "EnvArc:EaglePlayer/" and/or "Configs/" directories.
+   If none of these directories exist then the configuration can not be saved.
+
+5. This NoiseTracker player was based on the latest (?) version of the
+   NoiseTracker replay routine ripped from the "His Master's Noise" music
+   disk. It was mostly used by famous (Noise)tracker musicians like Mahoney,
+   Ziphoid, Kaktus, and Panda. This replay routine has support for special
+   commands and can handle synth samples also.
+
+6. The included ripper can rip NoiseTracker mods from the "His Master's
+   Noise" music disks only from WHDload memory dumps. It works only for
+   memory dumps with a size of 1051656 bytes and was tested with V1.1 of
+   the "His Master's Noise" slave, for other configuration (slave version
+   or memory dump size) it will not work. For info on how to make a good
+   memory dump with WHDload you must read the WHDload docs.
+
+7. The loaded module must always be at least as many bytes long as the
+   calculated size. This is why some modules will give you an error with
+   this player.
+
+8. Now you can choose your preferred player version for use with EP 2.00+.
+
+9. You can get the latest versions of Wanted Team products from:
+
+   http://amiga.emucamp.com/wt/wt.html
+
+Special greetings go to
+
+- Jan Krolzig for player/ripper betatesting 
+

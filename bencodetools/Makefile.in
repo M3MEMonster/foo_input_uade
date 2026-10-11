@@ -1,0 +1,64 @@
+.PHONY: check clean test
+
+CC = {CC}
+CFLAGS = -Wall -O2 -g {SHAREDLIBRARYFLAGS} -Iinclude {CFLAGS}
+EXECFLAGS = -Wall -O2 -g -Iinclude {CFLAGS}
+LDFLAGS = {LDFLAGS}
+PREFIX = {PREFIX}
+LIBPATH = {LIBPATH}
+LIBNAME = {LIBNAME}
+SHAREDNAMEFLAG = {SHAREDNAMEFLAG}
+PYTHON = {PYTHON}
+PYTHON_INSTALL_OPTION = {PYTHON_INSTALL_OPTION}
+
+COMPILE_TARGETS = {COMPILE_TARGETS}
+INSTALL_TARGETS = {INSTALL_TARGETS}
+
+LIBMODULES = bencode.o
+
+all:	$(COMPILE_TARGETS)
+
+compile-c:	$(LIBNAME) bencodetest bencat
+compile-python:	
+
+$(LIBNAME):	$(LIBMODULES)
+	$(CC) -shared $(SHAREDNAMEFLAG) -o "$@" $(LIBMODULES)
+
+bencode.o:	bencode.c include/bencodetools/bencode.h
+
+bencodetest:	bencodetest.c $(LIBNAME)
+	$(CC) $(EXECFLAGS) -o "$@" $< -L. -Wl,-rpath,. -lbencodetools
+
+bencat:	bencat.c $(LIBNAME)
+	$(CC) $(EXECFLAGS) -o "$@" -L. $(LDFLAGS) $< -lbencodetools
+
+check:	bencodetest
+	./bencodetest
+	python3 bencode.py
+	python3 typevalidator_test.py
+	@flake8
+	@echo
+	@echo "All tests successful" #
+
+test:	check
+
+install-c:
+	@echo "Installing C library"
+	@echo
+	mkdir -p -m 755 "$(PREFIX)/lib" "$(PREFIX)/include/bencodetools" "$(PREFIX)/bin"
+	install -m 644 include/bencodetools/*.h "$(PREFIX)/include/bencodetools/"
+	install -m 644 $(LIBNAME) "$(LIBPATH)"
+	install bencat "$(PREFIX)/bin/"
+
+install-python:
+	@echo
+	@echo "Installing Python packages"
+	$(PYTHON) setup.py install $(PYTHON_INSTALL_OPTION)
+
+install:	$(INSTALL_TARGETS)
+
+%.o:	%.c
+	$(CC) $(CFLAGS) -c $<
+
+clean:	
+	rm -f *.o *.so bencodetest bencat

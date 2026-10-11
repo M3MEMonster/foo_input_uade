@@ -1,0 +1,38 @@
+Short:    EaglePlayer "EarAche" external replayer
+Author:   Wanted Team
+Uploader: Don Adan <DonAdan@wp.pl>
+Version:  1
+Type:     mus/play
+
+This is a different version of the external "EarAche" replayer for
+EaglePlayer 1.54/2.00+.
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- Balance
+- ModuleInfo with Position Counter
+- Volume
+- SongEnd
+- Save
+- special Amplifier version (EP 2.00+ only)
+
+Notes:
+
+1. This player plays "EarAche" tunes in module and song (header and no
+   header) formats.
+
+2. You can choose your preferred player version for use with EP 2.00+.
+
+3. If you have a version of the "EarAche" editor higher than 1.05 please
+   contact Wanted Team.
+
+4. You can get the latest versions of Wanted Team products from:
+
+   http://amiga.emucamp.com/wt/wt.html
+
+Merry Christmas and Happy New Year 2006 for all Amiga users!!!

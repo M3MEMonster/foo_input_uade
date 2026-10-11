@@ -1,0 +1,86 @@
+#!/bin/bash
+
+CFLAGS="-Wall -W -O2"
+
+# Use sparse for compiling, if possible
+if [[ -z ${CC} ]] ; then
+    if cgcc --version >/dev/null 2>/dev/null ; then
+	CC="cgcc"
+    else
+	CC="gcc"
+    fi
+fi
+
+test_tree() {
+    cat >include/zakalwe/tree.h <<EOF
+#include <${1}>
+EOF
+    ${CC} ${CFLAGS} -o configure-tree-test -Iinclude configure-tree-test.c 2>/dev/null
+    return $?
+}
+
+cat > "include/zakalwe/config.h" <<EOF
+#ifndef _Z_CONFIG_H_
+#define _Z_CONFIG_H_
+
+EOF
+
+append_define() {
+  if [[ $2 = "0" ]] ; then
+    echo "/* #define $1 1 */" >> "include/zakalwe/config.h"
+  else
+    echo "#define $1 1" >> "include/zakalwe/config.h"
+  fi
+}
+
+${CC} ${CFLAGS} -o configure-reallocarray-test configure-reallocarray-test.c 2>/dev/null
+append_define "_Z_NEED_REALLOCARRAY" $?
+
+${CC} ${CFLAGS} -o configure-strl-test configure-strl-test.c 2>/dev/null
+append_define "_Z_NEED_STRL" $?
+
+cat >> "include/zakalwe/config.h" <<EOF
+
+#endif
+EOF
+
+${CC} ${CFLAGS} -o configure-select-test configure-select-test.c 2>/dev/null
+if [[ $? = 0 ]] ; then
+    append_define "_Z_SYSCALL_SELECT"
+else
+    echo "No select() syscall"
+fi
+
+${CC} ${CFLAGS} -o configure-mkdtemp-test configure-mkdtemp-test.c 2>/dev/null
+if [[ $? = 0 ]] ; then
+    append_define "_Z_HAS_MKDTEMP"
+else
+    echo "No mkdtemp()"
+fi
+
+echo "/* Tests all headers in one file. */" > "header-test.c"
+for f in include/zakalwe/*.h ; do
+    header=$(echo $f |sed -e 's|include/||')
+    if [[ $header = "ccul/support.h" ]] ; then
+	continue
+    fi
+    echo "#include <$header>"
+done >> header-test.c
+cat >> "header-test.c" <<EOF
+
+int main(void)
+{
+        return 0;
+}
+EOF
+
+test_tree "sys/tree.h"
+if [[ $? != 0 ]] ; then
+    test_tree "zakalwe/ztree.h"
+    if [[ $? != 0 ]] ; then
+	echo "tree test failed"
+	exit 1
+    fi
+fi
+
+sed -e "s|{CC}|${CC}|g" < Makefile.in > Makefile

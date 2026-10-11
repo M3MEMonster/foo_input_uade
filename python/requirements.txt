@@ -1,0 +1,4 @@
+pillow==10.4.0
+tqdm==4.66.5
+setuptools
+flake8==7.1.1

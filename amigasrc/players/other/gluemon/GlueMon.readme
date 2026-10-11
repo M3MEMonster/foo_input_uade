@@ -1,0 +1,71 @@
+Short:    Deliplayer for GlueMon
+Uploader: ljh@sigma.ou.dk
+Author:   ljh@sigma.ou.dk ( [·M·n·O·] aka Lasse Jari Hansen )
+Type:     mus/play
+Replaces: mus/play/deli_gluemon.lha
+Requires: Delitracker
+Version:  1.12
+
+***
+*** NAME:	GlueMon v1.13 - Deliplayer version
+*** 
+*** AUTHOR:	Original replay (c) 1990 by GlueMaster / Northstar (Lars Malmborg)
+*** 		Resourced and Deli-adapted by [·M·n·O·] (Lasse Jari Hansen)
+***
+*** E-MAIL:	ljh@sigma.ou.dk
+***
+*** HISTORY:	19-Nov-96 : 2. Aminet release.
+***		17-Nov-96 : Changed entrire replay code from
+***			    absolute to register-relative addressing.
+***			  : Removed all self-modifying code.
+*** 		08-Nov-96 : 1. Aminet release.
+***		21-Oct-96 : Deli-adaption (Volume/Balance/Songend).
+***		   Feb-92 : Stinger-adaption.
+***		   Jan-92 : Original resourced.
+***
+*** INFO:	Text from Gluemaster's original replay routine:
+***
+***		GLUE MASTER'S SMALLER SIZE TUNE PLAYER
+***		CREATED TO FIT IN A BOOT-INTRO !!!
+***		MODIFIED 26/2-90 TO BE EVEN SHORTER ...
+***		AND RE-ORGANIZED 25/6-90 TO SUPPLY A MODULE-FORMAT!!!
+***		FURTHER MORE DEVELOPED TO PLAY DRUMS 31/8-90!!!
+***
+***		SPECIAL REPLAYER FOR BOTH WITH & WITHOUT DRUMS!
+***		THIS IS THE REPLAY-SOURCE FOR THE MUSIC-DISK 'HIS MASTERS NOISE'!
+***
+***		© 1990 GLUE MASTER
+***
+***
+***		This release includes the 10 tunes used in the reset
+***		part of `His Master's Noise'
+***
+***			Bestick
+***			Game Music 1
+***			Gnu-Song
+***			Gurksaft
+***			Jobba
+***			Loader
+***			Popcorn
+***			Songname
+***			Trudelut
+***			Woodsock
+***
+***		plus 6 "new" tunes, sent in by Gluemaster himself
+***
+***			Flood
+***			Juice
+***			Knytning
+***			Latch
+***			Memphis
+***			Slugaren
+***
+***		ALL tunes are (c) by Gluemaster!
+***
+***		Credits must go to Gluemaster, for reporting/fixing
+***		cache problems, the new tunes and ofcourse for
+***		doing the darn thing in the first place!
+***
+***		Source released for educational purposes.
+***		Feel free to contact me for bug reports or help.
+***

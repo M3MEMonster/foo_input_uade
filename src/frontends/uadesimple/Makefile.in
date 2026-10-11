@@ -1,0 +1,25 @@
+CC = {CC}
+CFLAGS = -Wall -O2 -I../include -I{ZAKALWEFLAGS} -I{INCLUDEDIR} {DEBUGFLAGS} {AOFLAGS} {ARCHFLAGS}
+CLIBS = {AOLIBS} {ARCHLIBS} -lm -lbencodetools -lzakalwe
+
+all:	uadesimple
+
+MODULES = uadesimple.o audio.o ../common/libuade.a
+
+uadesimple:	$(MODULES)
+	$(CC) -o $@ $(MODULES) $(CLIBS)
+
+clean:	
+	rm -f uadesimple *.o
+
+%.o:	%.c
+	$(CC) $(CFLAGS) -c $<
+
+audio.o:	audio.c audio.h
+uadesimple.o:	uadesimple.c
+
+check:	all
+
+installcheck:	check
+
+distclean:	clean

@@ -1,0 +1,9 @@
+image: python:3.11
+
+build-job:
+  stage: build
+  script:
+    - pip install -r requirements_dev.txt
+    - ./configure
+    - make -j $(nproc)
+    - make test

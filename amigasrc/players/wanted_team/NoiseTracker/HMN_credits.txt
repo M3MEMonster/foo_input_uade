@@ -1,0 +1,711 @@
+============================================
+Credits:
+Gnu-facts by Acro/Rebels.
+Bug-testing by Panda in Paradise.
+Scrolls by a bunch of my friends.
+Digitizing by Monopoly in Paradise.
+Great fun with parties in Lomma.
+Loadingpicture by Uno/Scoopex.
+Lemming ripped by Ziphoid & Twins.
+Music by: Duke Ellington, Guts, Maggot,
+Candyman, H.I.V., Monopoly, Nizze,
+Ziphoid, Flex, Donald, Watchman, Tsaca,
+Yogi, Zeb, Mantronix, Neuman, Karsten
+Obarski, Xerxes, Gluemaster, Panda
+and Mahoney.
+Reset-part-music by Gluemaster.
+All other coding by Mahoney & Kaktus.
+Lovepicture held by Petra Bergquist.
+Great love by Helene.
+Alla-barn stories by everybody, most
+of them was made on a bus-trip to
+Austria (going Skiing!).
+Worrying by Foetus.
+No thanks to modemtraders screaming
+at me to get this from me first,
+to get upload-credits.
+Life given to me from my parents.
+Assembler by Promax. (I love it!)
+Great support by all members in
+Paradise (Defcon one and Defiers!).
+Instruments sampled by Mahoney, Glue-
+master, Uncle Tom, Ziphoid, Chris
+Korte, Romeo Knight, No limits and
+Maniacs of Noise.
+Warm valley sampled by Mahoney.
+Ideas by Mahoney & Kaktus.
+Disk support by Ziphoid.
+(Thanks for the
+50 maxell-disks you gave me ...)
+TuneCruncher by Mahoney.
+Great friendship and support by Anders,
+Guts, Pjeter, Stellan, Ulrika,
+Angela, Jenny, Robert, Fyhn, Heidie,
+Helene, Josefin, Dea, Mia G., Sofie,
+Per, Anna-Carin, Lena, Flex, Jimmy,
+Patrik Schwetlowskilaininen (haha!),
+Ziphoid, Maria, Susanne, Elin, Polhems
+Getar, Xerxes, Cato, Linda, Paula,
+Jenny, Ann, Lotta, Jonas and
+all the rest of my wonderful friends ..
+Software used:
+AsmOne v1.01 by Promax (Love it!),
+DeluxePaint 3 (Hate it!),
+HMN-NoiseTracker (Love it!),
+Disk-salv (Hate it!),
+IffMaster by Arcane (Love it!),
+Hallonboot, digiview, lemmings,
+Monkey Islands (yeah!), turbo-
+backup, MasterSeka and MacWrite 2.
+Spreading by you.
+Great fun at the ECES.
+============================================
+Greetingsarna till His Masters Noise.
+============================================
+Computerfreaks:
+Alastor: still dustman, great?
+Acro: the master of the gnus!
+Artbeat: I'll call you some day,
+maybe we can do something
+together!
+Atom: go USA or go home!
+Awcy: sure looking good, go for it!
+Azatoth: wonderful demos you've
+made, something more than
+"Yeah! I made a vectorcube!"
+Azlon: jag har inga p{sar under
+}gonen, jag har Ica-kassar!
+Bacchus: strula runt som en get.
+Big A: det gamla betygssystemet |r
+avskaffat!
+Big Mac: burger get & Mcg}k
+Bl{ toppluva: getar mer |n det smakar!
+Boerni: life never stops, does it?
+Boubi: Polhems Getar flyger h}gre!
+Bug: rufen Sie bitte anticimex an!
+Candyman: utom Peter som |r tv{ meter!
+Celebrandbil: heard you spoke with my
+brother, digging Lunds University.
+Chris Korte: army's over now, get alive!
+Chrysanthemum: MeGAklOpPinG forever?
+Coq Rogue: go for Nyk}ping.
+Crab: solemn souls lost in a desert?
+Dagger: eeeh?
+Danko: sure nice works you've made,
+the good old 64 isn't dead yet!
+Dragon: grr! who's afraid of the dragon?
+Exolon: nice work with Startrekker,
+but is it worth it? check out my
+'smaksak'-tracker with some four
+extra calculated voices, beat that!
+Fangoria: the scaring magazine, uuuh!
+Firefox: where's the fire, totally gone?
+Flex: ...som blev }verk}rd av en BMX!!!
+Foetus: hello daddy!
+Friday: totally muted situation.
+The Germ: little nasty fella.
+Gluemaster: fuck PC, go life!
+Godbrain: not much sense here.
+Gommolassmot v3.0: eh? that's me!
+Grums: what happened with our buttons?
+Gr|vskopa: not bad at all, 2000 points!
+Gully: I LOVE long letters!
+Guts: getarna g}kar i hallonskogen.
+Heffakloppen: fucking negerbullar.
+Iceman: cool as hell.
+Injun: long ago, in another dimention.
+Ironlord: I want that tune!
+Jazze: BPM, my bottom!
+Jesper Kyd: lovely day, dig this...
+Jonny: send me MORE, handsome!
+Kaktus: why France when there is
+Eskilstuna???
+Larsson: you ought to be a salesman!
+Maggot: Polhems Getar grisar vidare!
+Mantronix: more than lovely!
+Martin Pedersen: just mentioned.
+Mega: eeeeh, killen flippar!
+Mikael Balle: drawelliwellwell.
+Mike: out of memory, dear fella.
+Monopoly: friday nights are yours!
+Moppe: you and Spike, strange relations!
+Mr. Mac: Tore |r pervers
+Mr. Perfect: Danish dynamite!
+Myggtasken: Hall{ja, jae Myggtasken!
+Neuman: Polhemskolan rules the world!
+Niall Mc Gowan: Rainbowfully yours!
+Nizze: piano as a pet? why not?
+Oberheim: it's real cult!
+Odie: some day, another year!
+Omega: Bart Simpson. Wierd!
+Panda: gulleplutt!
+Panther: hej i Lappland!
+Parrot: hi Clark Kent!
+Pecc: Pascal stinks!
+Photon: how's life in the deep, deep,
+forest?
+Piq: far away in time...
+Poseidon: we build a world of music!
+Prodigy: I escaped V|rnhemsskolan, phew!!
+Raistlin: show me France some day!
+RedHead: $$$ makes the world go around.
+Rick: come on and play some volleyball
+with us, it's really great!
+Ron: Kriiistianstad!! (l|ses med
+smaaul|nsk dialekt!)
+Sal: same message as above!
+Shogun: triangular music, wonderful!
+Sil: How's life in Norrland?
+Sine: coding is a hobby, not a life!
+Sir Gawain: Hyltebruk rulez...
+Slimer: German showtime!
+Spexhane: keep cool, Polhem shines!
+Spike: va faen h|nde me Bandits l{tar?
+Sputnik: who are you? Don't remember???
+Teeme: great grafix from the land of
+the thousand seas.
+Torben Larsen: shoot'em-down!
+The Unicorn: it's finally ready!
+Tip: life is playing in V|xj}!
+Ucka: thanx for Ahlgrens bilar!
+Uno: thanks for the picture,
+I really love it, what about
+the dancing flower???
+Virre: Eskilstuna concert-hall would
+be a great place to have a disco in!
+Watchman: you've got it now, pal!
+Wiz: Polhemskolan rules!
+Xerxes: Polhems Getar har roligare!
+Yabba: that hp-calculator belongs
+to the trashcan! Nice with your
+real-time calculated vectors
+on the good old 64! In 3 frames!
+Yogi: Polhemskolan rules!
+Ziphoid: I promised you the longest
+greeting, and here it is:
+Have a great night, and give
+Maria a big wet kiss from me,
+but do not forget to protect
+yourself, use a haklapp!!!!!
+Zizyphus: H|lsingborgningar p{ dej!
+Zymox: ... last but not least!
+============================================
+Computergroups:
+Ackerlight software, Agile, AlphaFlight,
+Altair, Barricade software, Celtic,
+Clones, Complex, CCS, Defcon One,
+Defiers, Dexion, Fairlight, Fist!,
+Horizon, Kefrens, Level one & the dream team,
+The Link, The Lost Boys (ST), Maffia,
+MeGAkLoPParNa, Megalamers, Metallians,
+Mute 101, NorthStar, Paradise, Paradox,
+Phenomena, Rawhead, Razor 1911, Rebels,
+Red Sector Inc., Sandl{dan, Spr|ngd Anka,
+Silents, Software of Sweden, Sphinx,
+Swampions, Sync (ST), Tommyknockers,
+Triad, Voice, Vortex 42 and Xakk.
+============================================
+Great friends & foes:
+Anna Bengtsson: what happened to that red hair you
+promised me last postcard?
+Anders Berkeman: my life is here! see you this summer!
+Anders Fyhn: summerhacking smells good!
+Anders Hoh: Angela is candy, you know that!
+Anders Lundahl: I owe you 300 skr, remember?
+Anders Nilsson-Stig: thank you for moral support...
+Andrea Holmgren: hi sweetheart!
+Angela Andersson: Anders is candy, eat him!
+Annika Johansson: no, I don't have to mention you!
+Annika Sanden: greet JC from me, when you can!
+(He isn't born yet! it's true!)
+Cina S}rell: I missed your birthday, sob sob!
+Cribban Dan{s: addicted to swimming?
+Ebbe: the poor old dentist, summerpal?
+Elin Stoltz: st{ p{ dej, annars g}r n{gon annan det
+Erik Persson: congratulations, an iq over 160
+is nothing to play around with!
+Fredrik Hansson: see you some day this summer!
+Fredrik Tufvesson: dear ol' brother o mine, how do you
+survive me?
+Hans Ekdahl: I can jump higher than you, my hands
+above the net will stop you!
+Heidie Larsson: han |r inte din bror!
+Helene Everlund:  you are my future!
+H{kan Hansson: hi hoe, continue!
+Jenny Andersson: am I wierd? I hope not!
+Jenny Arnesson: parents are there to help you, or?
+Jenny Sandberg: how's it going with your krasse?
+Jenny Sv|rd: next Thursday we'll make those
+photographs, I love it!
+Jeppe Johansson: the studio here in Staffanstorp
+all looks good. wonderful seeing
+something like that here, good luck
+this summer with 'Mortal Memories!'
+Jessi Larsson: I wanna meet you when you get home!
+life in California don't last forever!
+Jime Johansson: hi classmate!
+Jimmy Larsson: l{ng som en f}ljetong
+Joakim Falck: so, you plan to digitize some
+old automobiles, call me and you'll
+get some ancient music to it!
+Johan Kettisen: thanx for my Amiga!
+John Carehag: greet Maria from me!
+Jonas Eklund: We sure had some great fun when
+school went out at 'Chrougen'!
+Josefin Mandorsson: I've been thinking about you!
+Karin Berkeman: sekreteraren i aktiespararnas
+ungdomsf}renings lokalavdelning
+i Helsingborg, hmmmm?
+Lars Tufvesson: 2nd brother of mine!
+Lena Claesson: see you at school, lovely!
+play the piano for me some day!
+Lena Svensson: come and play some volleyball
+again, Mattias was there last week,
+bring Tomas too, he'll enjoy it!
+Maria M.: Hi there, John is not
+completely wrong, is he???
+Marika M.: you owe me 30kr, grr!
+Marcus Nelson: Clark Kent strikes back!
+Mats Ekstrand: kiss Malin from me, she's worth it!
+Mattias Fondell: yeah, go for the army!
+Matti Pettersson:  swimming your life away?
+Mi Holmstrand: so, you're a star model? that's
+wonderful, see you at the movies!
+Mia Grundstr}m: don't be shy, you can do better
+than that!
+Nicklas Larsson: burned your 8th Amiga?
+Ola Eriksson: 27 days to muck!
+Paula Kjellstr}m: this is something beautiful,
+Peter below sends his love!
+Peter Sanden: this is too something wonderful,
+Paula yours, go and get her!
+Petra Persson: nice!
+Pontus S|ld}d: who the hell is Christin?
+give me her number as she wanted!
+and the next time, put on enough
+stamps on your postcards!
+Rickard Nilsson: Spyken looks like a toyhouse!
+Sebastian Stebe: how's your synthpaper going,
+1500 papers every month, that's good!
+Stefan Zivkovic: Polhems Getar f}rgyller tillvaron
+med sin existens!
+Stellan Bilen: alla barn var glada,
+utom Hanna som d|cka av en stekpanna!
+Ulrika S}rell: you'll get your serious talk soon!
+============================================
+Famous persons worth mentioning.
+A. Rinkey, Al Jaffe, Astrid Lindgren,
+Carl Bildt, Charlie Chaplin, Dave Berg,
+Don Martin, F. Huddleston, Hans Alfredson,
+His Majesty the King: Carl-Gustav Bernadotte,
+J.R.R. Tolkien, Larry Siegel, Lasse [berg,
+Richard Fuchs, Stellan Sundahl, Tage Danielsson
+and Walt Disney.
+============================================
+What about some companies?
+Formec Milj}, Imagitec Design, Klimabolaget AB,
+Psygnosis, Sierra, Swedisc and Sydsvenskan.
+============================================
+Out of cathegory error?
+City SAF radio 102.6 FM Stereo,
+Moderaterna, Radio AF 95.0 FM Stereo,
+Radio P4 99.1 FM Stereo, Reader's digest and Top Gun!
+============================================
+Musicians who like us: (haha)
+Bug, Chris Huelsbeck, Chris Korte, Codex, Coq Rogue,
+David Whittaker, Dr. Awesome, Firefox, Fix, Fred Hahn,
+Gluemaster, Godbrain, Jazze, Jesper Kyd, Karsten Obarski,
+Maniacs of Noise, Mantronix, Martin Galway, Monopoly,
+Moppe, Neuman, Oberheim, Odie, Panda, Paul van der Valk,
+Rob Hubbard, SCS, Tip, Tomas Lopatic, Uncle Tom,
+Watchman, Zeb, Ziphoid and Zymox.
+============================================
+REAL musicians we would like to be:
+ABBA, Adolphson & Falk, The Art Of Noise, Beethoven,
+Camouflage, Chopin, Cornelis Vreeswijk, Depeche Mode,
+Di Leva, Erasure, Georg Riedel, Grieg, Gyllene Tider,
+Harold Faltermeyer, Hansson de Wolfe United,
+Howard Jones, Intermission, Jakob Hellman, Jan Hammer,
+Jean-Michel Jarre, Jimmy Sommerville, Johan Ekelund,
+Kim Wilde, KLF, Kraftwerk, Mauro Scocco, Mikael Wiehe,
+Mortal Memories, Paul Hardcastle, Paul Young, Pet Shop Boys,
+Peter LeMarc, Propaganda, Ratata, Roxette, Seal, Tchaikovsky,
+Tears for Fears, Vangelis, Vivaldi, Yazoo and Yello.
+============================================
+Not to be forgotten: Things!
+Casio fx-115M scientific calculator, JVC PC-30,
+the 0.3mm leads to my pen, Philips CM 8833 personal
+monitor and Tac-2 (rebuilt, ofcoz!).
+============================================
+Our favourite cathegory: Animals!
+All Cows, My (non-existing) Dog, Getar, Gnuer,
+Grasshoppers and G}kar.
+============================================
+Yep! It's time for places:
+The Beach-church in Lomma, My bed,
+Br{h}gsbadet in Staffanstorp,
+Bus 123 to K|vlinge, 
+The Buses in Malm}, 
+Chrougen in Lund,
+Kaktus' summerhouse,
+Helene's place,
+Mahoney's summerhouse,
+Panda's summerhouse,
+Polhemskolan in Lund,
+P{gat{get till St{ngby,
+Sodom NightClub and Spyken.
+============================================
+Type your favourite pervert word,
+and you'll get a night you'll never forget!
+============================================
+Aase's death 01:25 Mahoney
+Abridge 04:25 Mahoney
+After midnight 02:45 Panda
+Akrobat 03:09 Gluemaster
+All times high 02:44 Xerxes
+Allergitestad 03:00 Mahoney
+Amegas 04:21 Obarski
+Antikaries 03:19 Panda
+Aqua minerale 01:44 Xerxes
+Be with Glue 00:38 Gluemaster
+Be with Mahoney 01:09 Mahoney
+Be with Panda 00:32 Panda
+Broken nails 03:59 Panda
+Brynolf 01:15 Panda
+Captain Starshine 04:17 Neuman
+Cecilia Lind 01:29 Mahoney
+Chip 03:09 Gluemaster
+Crystal symphony 02:33 Mantronix
+C.u.t 02:01 Zeb
+Cyan sounds of Zeb 02:02 Zeb
+Cyber Siriusnetic 02:24 Yogi
+Darkness 03:11 Tsaca
+Digital master 01:47 Watchman
+Digital touch 01:39 Watchman
+Digital vision 01:01 Watchman
+Eargasm 03:01 Panda
+Ekorren 00:20 Gluemaster
+Ett stycke husmusik 02:18 Xerxes
+Flight of Grud 03:46 Mahoney
+Fludent 0.25mg 01:52 Donald
+Gaffeltruck 03:40 Mahoney
+Gn|llspik 02:59 Flex
+Gommoplask 02:02 Mahoney
+Grannens hund 02:02 Donald
+Greensleeves 02:18 Gluemaster
+Heroplop 04:48 Mahoney
+H}stvisa 02:35 Mahoney
+Ikke advanced 01:01 Ziphoid
+It's real 01:24 Xerxes
+I'm a hedgehog 01:09 Gluemaster
+Jobbig 03:18 Mahoney
+Just a game 03:40 Mahoney
+Kindermedley 04:25 Mahoney
+Late night walk 02:00 Nizze
+Lepeltheme 04:36 Obarski
+Let's cultivate 01:38 Gluemaster
+Lonely 02:06 Monopoly
+Look around 03:10 Mahoney
+Look at Hubert 03:02 Mahoney
+Me done this too 03:27 Mahoney
+Moonlight shadow 01:10 Panda
+Moorfogging 01:23 Nizze
+Muppenkorva 01:52 Gluemaster
+New story 02:11 Tsaca
+Nittaku 02:33 Donald
+Nostalgia heaven 01:32 Zeb
+Not used 02:22 Gluemaster
+Opaque glasses 01:20 Gluemaster
+Operating 02:33 Mantronix
+Peggy go home 03:00 Mahoney
+Pilsner 02:04 Gluemaster
+Poet's rhyme 03:12 Ziphoid
+Prislapp 01:43 Gluemaster
+Questioff 02:07 Mahoney
+Rallyemaster 05:07 Obarski
+Regn och rusk 01:47 Mahoney
+Rektum 02:41 Donald
+Rotinom 02:38 Nizze
+Run like an egyptian 01:03 Zeb
+Russian-vodka 02:02 Gluemaster
+Sailor's hornpipe 00:36 Panda
+Schampoo 03:34 Mahoney
+She's my light 03:32 Panda
+Skreckeksempel 03:13 Mahoney
+Slabba 04:15 Mahoney
+Slaughter 01:53 Gluemaster
+Sleepwalk 04:51 Obarski
+Sleeze doner 03:24 Neuman
+Slow swagger 04:04 Yogi
+Surpraiz 02:00 Gluemaster
+Sylte baertyttetoy 02:52 Zeb
+The funny farm 02:01 Neuman
+The happy hunt 03:10 Panda
+The Russian bear 02:04 Ziphoid
+Trip on a Monday 01:02 Zeb
+Trubbel 03:02 Mahoney
+Try to memorise 02:30 Zeb
+Tune in minorum 03:25 Yogi
+Ussr 01:54 Nizze
+Victorium palace 02:14 Zeb
+Wafflehour 02:47 Mahoney+flex
+Wafflehour 1st 00:56 Nizze
+Wafflehour 2nd 00:46 H.I.V.
+Wafflehour 3rd 00:38 Candyman
+Wafflehour 5th 00:38 Maggot
+Wafflehour 6th 00:39 Guts
+Wait for Andy 02:33 Mahoney
+Warm valley 00:30 Duke
+Wings of glory 02:08 Ziphoid
+Wishes to you all 03:10 Gluemaster
+Xtra2mat 02:16 Mahone
+
+The staff of His Master's Noise.
+============================================
+Here is a list of those people you
+might want to get in touch with. This is
+a list of responsability. None of us are
+interested in swapping, got that?
+Alphabetically ordered a-z.
+============================================
+(Candyman/Paradise)
+Peter Tufvesson
+Tingbackav. 12
+s-23030 OXIE
+Sweden
+============================================
+Donald of the Remedy crew:
+Hej. (Donald/Remedy crew)
+P|r Danielsson
+S:t J}rgens v. 17
+s-29600 [HUS
+Sweden
+============================================
+Flex in Paradise:
+For anything...  (almost!)
+(Flex/Paradise)
+Mikael Caleres
+Sunnanv. 21
+s-22226 LUND
+Sweden
+============================================
+Gluemaster of NorthStar:
+Stora |lgar flyger |nnu h}gre.
+(Gluemaster/NorthStar)
+Lars Malmborg
+Sl|tt|ngsg. 29b
+s-23400 LOMMA
+Sweden
+============================================
+Guts in Paradise:
+Send me empty disks, because that is
+exactly what i'm running short of.
+(Guts/Paradise)
+Stefan Zivkovic
+N|mndemansv. 2
+s-22378 LUND
+Sweden
+============================================
+(H.I.V./Paradise)
+Ola M{rtensson
+[ldermansv. 26
+s-23030 OXIE
+Sweden
+============================================
+(Kaktus/NorthStar)
+Anders Berkeman
+Box 16014
+s-25016 R[[
+Sweden
+============================================
+(Maggot/Target)
+Mattias Johansson
+K|mn|rsv. 3b:221
+s-22246 LUND
+Sweden
+============================================
+Mahoney of NorthStar:
+If you want to swap illegal games
+(0% answer, guaranteed!), drop me a
+letter (I LOVE long letters!)
+(Hi Gully & Jonny!) at this address:
+(Mahoney/NorthStar)
+Per Tufvesson
+Tunnbindarev. 9
+s-24535 STAFFANSTORP
+Sweden
+p.s. I'm NOT interested in any
+letters describing the scene
+in Africa, nor anything else
+just containing information
+from the computerworld.
+That's your world, NOT mine!
+============================================
+(Mantronix/Razor 1911)
+Martin Wall
+Handskmakareg. 4a
+s-29154 KRISTIANSTAD
+Sweden
+============================================
+(Monopoly/Paradise)
+Robert Nilsson
+Baldersv. 5c
+s-23700 BJ\RRED
+Sweden
+============================================
+Neuman of Megalamers:
+MEGALAMERS funk your dada.
+(Neuman/Megalamers)
+Finn Nyman
+Dom|ngatan 15
+s-24232 H]RBY
+Sweden
+============================================
+(Nizze/Paradise)
+Anders Nilsson-Stig
+Ryttm|starev. 10
+s-23700 BJ\RRED
+Sweden
+============================================
+Panda in Paradise:
+I have not enough time for swapping,
+but if you for any other reason want
+to contact me, please do!!!
+(Panda/Paradise)
+Peter Sanden
+Box 64
+s-24521 STAFFANSTORP
+Sweden
+============================================
+Tsaca of Amaze:
+Contact me for song-swapping with the
+following address:
+(Tsaca/Amaze)
+Atte Pulli
+Majoitusmestarinkatu 1 e 39
+sf-20350 TURKU
+Finland
+============================================
+Watchman of Complex:
+Hello everybody! If you think you need
+some Watchman of Complex-like music
+for your software-house game, demo,
+musicdisk, party or birthday then
+just throw me a line or two at this
+address:
+(Watchman/Complex)
+Markku M|ki
+Kurikantie 19
+sf-61300 KURIKKA
+Finland
+============================================
+(Xerxes/Voice)
+Per Swantesson
+Karl XI-gatan. 3a
+s-22220 LUND
+Sweden
+============================================
+Yogi of Megalamers:
+MEGALAMERS smagar dada-discon.
+(Yogi/Megalamers)
+J}rgen Nilsson
+Beckasinv. 14
+s-24232 H]RBY
+Sweden
+============================================
+(Zeb/Panoramic Designs)
+Sebastian Bjoernerud
+7870 Grong
+Norway
+============================================
+Ziphoid of Razor 1911:
+Det |r lugnt.
+(Ziphoid/Razor 1911)
+John Carehag
+]stra {sgatan 11 1tr 
+s-63225 ESKILSTUNA
+Sweden
+============================================
+Now what about that future?
+==================================
+Is there really a future in this
+world? Is there any reason why we've
+done this for you, all for free?
+You know, don't you? These hours and
+hours consumed by this stupid Amiga,
+are they really worth it?
+ We've only got one answer, and that is:
+... that is:
+       Nope!
+This is the very, VERY, last thing you
+will see from us. From now and on, our
+lives come in the first place, above all
+this shitty programming we've been doing
+for the last ten years.
+So, this text should be some kind of
+sad partingstory, but we do not look
+at it as a sad thing to do. We always
+wanted to do something nobody else
+dared to do, and the most astonishing
+thing is that we think we managed! 
+I do not normally use dirty language,
+but in this case I have to. This
+fucking musicdisk has taken me over 20
+months to complete, and is it really
+worth it? No, No, No, No, not at all!
+But it's all my fault, I started it,
+I had to finish it, and it would have
+been finished long ago if it wasn't for
+one simple rule: It must work!
+If it doesn't work on your computer,
+DON'T TELL ME!!! I don't want to know.
+The last eight months I've spent
+correcting bugs and including new
+bugs. I can't really understand why I
+didn't follow a good friends hint:
+To create a basic-program that
+randomizes some 100kb of memory,
+and then checks if the randomized
+numbers would turn up to be a
+musicdisk by Mahoney & Kaktus.
+Ok, the possibility that 100000
+randomised bytes would be a
+working musicdisk isn't very
+big, but it would still be a much
+more comfortable way of doing this
+musicdisk. Some day I will try it out!
+Anyway, the summer is soon over,
+and whenever the sun was shining,
+you couldn't find me in front of a
+computer. That is the main reason
+for this little delay of about
+a year. The original release-date
+was October 1990. I think I failed!
+What happens to Mahoney & Kaktus?
+Well, do you know? I don't ...
+I (Mahoney) have recently taken over
+the school-magazine at our school,
+Polhemskolan in Lund, together with
+a couple of friends (Guts & Flex in
+Paradise, Larsson, Pjeter, Erik and
+Boubi/Target) and we have also started
+a club of humor. That is my future.
+Kaktus has been working at a local
+food-store moving bananas and apples,
+and has all together an all too
+exciting life, thereby forgetting
+a lot of other things, for instance
+his little computer. Those few days
+he discovers it in his cupboard he
+spends making mathemagic. Not much
+to be done there!
+So, the less I type here, the
+faster this disk will be released.
+If you want to check out what
+mathemagic is, watch the reset-part
+of this musicdisk.
+Thank you for watching, hope you
+like what you see, because we sure do!
+Have a noise day!
+Mahoney & Kaktus
+the 30th of September 1991.

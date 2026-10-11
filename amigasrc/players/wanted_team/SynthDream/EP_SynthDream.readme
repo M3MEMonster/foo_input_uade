@@ -1,0 +1,59 @@
+Short:        EaglePlayer "Synth Dream" external replayer
+Author:       Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      2
+Type:         mus/play
+Replaces:     mus/play/EP_SynthDream.lha
+Architecture: m68k-amigaos
+
+This is a new version of external "Synth Dream" module replay for EaglePlayer
+1.54/2.00+. It's a player for all (?) known "Synth Dream" (Amiga) modules.
+
+Version 1
+
+Features:
+
+- Analyzer
+- Voices
+- Volume
+- SampleInfo with SampleSaver (EP 2.00+ only)
+- Balance
+- SongEnd
+- ModuleInfo with Position Counter
+- SubSong
+
+Version 2
+
+- fixed bug in original replay code
+- some changes/fixes
+- added an Amplifier version (EP 2.00+ only)
+
+Notes:
+
+1. This soundformat was created and used (only ?) by Laurens Tummers
+   and John Tonnard from Synth Dream.
+
+2. Default file prefixes for:
+
+   songdata - SDR. (for example: SDR.MonsterBusiness title)
+   samples  - SMP. (for example: SMP.MonsterBusiness title)
+
+   BTW. You can use also "SMP.set" for samples name.
+
+3. If you have, or know of unsupported or unknown "Synth Dream" modules
+   please contact the Wanted Team.
+
+4. Now you can choose your preferred player version for use with EP 2.00+.
+
+   The sound output of the Amplifier version in the Fast RAM Amplifier mode
+   is very poor. I'm not sure why but perhaps it is another EP2 bug.
+   Sources for both player versions are available on the WT page.
+
+5. You can get the latest versions of Wanted Team products from:
+
+   http://amiga.emucamp.com/wt/wt.html
+
+Special greetings go to:
+
+- Psygore for help
+- Jan Krolzig for beta testing
