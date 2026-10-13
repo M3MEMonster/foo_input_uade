@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include <uade/uade.h>
+#include <uade/uadestate.h>
 #include <string>
 #include <string_view>
 #include <atomic>
@@ -69,19 +70,36 @@ public:
 	static struct uade_file* fb2k_amiga_loader(const char* name, const char* playerdir, void* context, struct uade_state* state) {
 		auto* self = static_cast<input_uade*>(context);
 		try {
-			service_ptr_t<file> file;
-			char* pos = const_cast<char*>(strstr(name, "file://"));
-			if (pos) {
-				pos += strlen("file://");
-				for (int i = 0; *pos != '\0'; pos++) {
-					if (*pos == '/') *pos = '\\';
+			if (state->rmc != NULL) return uade_rmc_get_file(state->rmc, name);
+			service_ptr_t<file> amiga_file;
+			pfc::string8 str_path;
+			pfc::string8 zm_str_path;
+			filesystem::g_get_canonical_path(name, str_path);
+			if (filesystem::g_is_valid_directory(str_path.c_str(), fb2k::noAbort)) return uade_empty_file(str_path.c_str());
+			if (str_path.contains("Zoundmonitor")) {
+				try {
+					filesystem::g_open_read(amiga_file, str_path.c_str(), fb2k::noAbort);
+					goto read_amiga_file;
 				}
-			}
+				catch (...) {
+					pfc::string8 filename;
+					filename << "Zoundmonitor/Samples/" << pfc::string_filename_ext(str_path.c_str());
+					while (str_path.contains("Zoundmonitor")) {
+						str_path = pfc::string_directory(str_path.c_str());
+					}
+					str_path << "/" << filename;
 
-			filesystem::g_open_read(file, name, fb2k::noAbort);
+					filesystem::g_get_canonical_path(str_path.c_str(), zm_str_path);
+					filesystem::g_open_read(amiga_file, zm_str_path.c_str(), fb2k::noAbort);
+					goto read_amiga_file;
+				}
+				
+			}
+			filesystem::g_open_read(amiga_file, str_path.c_str(), fb2k::noAbort);
+		read_amiga_file:
 			pfc::array_t<uint8_t> data;
-			file->read_till_eof(data, fb2k::noAbort);
-			return uade_file(name, data.get_ptr(), data.get_size());
+			amiga_file->read_till_eof(data, fb2k::noAbort);
+			return uade_file(str_path.c_str(), data.get_ptr(), data.get_size());
 		}
 		catch (...) {
 			return nullptr;

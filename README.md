@@ -25,7 +25,7 @@ Formats in Windows type (name.ext):
 | .bss | Beathoven Synthesizer |
 | .bd/.mth | Ben Daglish |
 | .bds | Ben Daglish SID |
-| .bp/.sndmon | BPSoundMon 2 |
+| .bp | BPSoundMon 2 |
 | .bp3 | BPSoundMon 3 |
 | .kris/.krs/.chip/.chp | Chip Tracker |
 | .cin | Cinemaware |
@@ -153,8 +153,9 @@ Formats in Windows type (name.ext):
 | .scumm | SCUMM |
 | .s-c/.scn | Sean Connolly |
 | .scr | Sean Conran |
-| .sid1/.smn/.sid | SIDMon 1.0 |
-| .sid2 | SIDMon 2.0 |
+| .sid1/.sd1/.sid | SIDMon 1.0 |
+| .sid2/.sd2 | SIDMon 2.0 |
+| .agi | Sierra-AGI |
 | .mok | Silmarils |
 | .sa/.sonic | Sonic Arranger |
 | .smus/.snx/.tiny | Sonix Music Driver |
@@ -162,7 +163,9 @@ Formats in Windows type (name.ext):
 | .sc/.sct | Sound Control |
 | .psf | Sound Factory |
 | .tw | Sound Images |
-| .sm/.sm1/.sm2/.sm3/.smpro | Sound Master |
+| .sm/.sm1 | Sound Master |
+| .sm2/.smpro | Sound Master II v1 |
+| .sm3 | Sound Master II v3 |
 | .jd | Special-FX |
 | .doda | Special-FX ST |
 | .sas | Speedy A1 System |
@@ -182,7 +185,6 @@ Formats in Windows type (name.ext):
 | .vss | Voodoo Supreme Synthesizer |
 | .wb | Wally Beben |
 | .ymst | YMST |
-| .agi | Sierra-AGI |
 | .sng | Zoundmonitor |
 
 Formats in Amiga type (ext.name):
@@ -190,6 +192,7 @@ Formats in Amiga type (ext.name):
 | Prefix(es) | Format |
 |---|---|
 | ash. | Ashley Hogg |
+| cust. | Delitracker Custom |
 | dns. | Dynamic Synthesizer |
 | jpn. | Jason Page |
 | mfp. | Magnetic Fields Packer |
@@ -211,6 +214,18 @@ Formats in Amiga type (ext.name):
 3. Some Hippel ST COSO (.soc) files can be accept and play but output strange noise. Those files actually are rejected by replayer due to the calculation size is not equal to real file size. You can try to insert 2-40 null bytes from the end of the file to let them be equal.
 4. I deliberately rejected many formats that can be decoded by [foo_openmpt54](https://www.foobar2000.org/components/view/foo_openmpt54) since UADE is more like a black box and it's hard to get extra information from it.
 5. For Quartet ST, you can choose ```.qts+.smp``` or ```.qts/.4v+SMP.set``` or ```.4v+.set``` format
+6. For Zoundmonitor, you must organize your song and sample as below rules:
+    - They must under ```Zoundmonitor\``` folder
+    - Samples must be in ```Samples\``` folder and it can be  ```Zoundmonitor\Samples``` or in the same directory of your song like this:
+        ```
+        ├─ Zoundmonitor\
+        │  ├─ your_song_folder1\
+        │  │  ├─ Samples\
+        │  │  ├─ song1
+        │  │  ├─ song2
+        │  │  └─ ...
+        │  ├─ your_song_folder2
+        ```
 
 ## Compatibility
 - foobar2000 **v2.0 or newer**, Windows, 32-bit and 64-bit.
